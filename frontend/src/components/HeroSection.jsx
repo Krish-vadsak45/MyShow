@@ -9,7 +9,7 @@ const HeroSection = () => {
 
   return (
     <div
-      className="flex flex-col items-start justify-center gap-4 px-6 md:px-16 lg:px-36 min-h-[80vh] relative bg-cover bg-center"
+      className="flex flex-col items-start justify-center gap-4 px-6 md:px-16 lg:px-36 min-h-[100vh] relative bg-cover bg-center"
       style={{
         backgroundImage: `url(${backgroundImage})`,
       }}
