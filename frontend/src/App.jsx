@@ -32,8 +32,8 @@ function App() {
         <Route path="/admin/*" element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="addshows" element={<AddShows />} />
-          <Route path="listshow" element={<ListShows />} />
-          <Route path="listbooking" element={<ListBookings />} />
+          <Route path="listshows" element={<ListShows />} />
+          <Route path="listbookings" element={<ListBookings />} />
         </Route>
         <Route path="*" element={<div>Page Not Found</div>} />
       </Routes>

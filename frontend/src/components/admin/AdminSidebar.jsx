@@ -17,11 +17,11 @@ const AdminSidebar = () => {
 
   const adminNavlinks = [
     { name: "Dashboard", path: "/admin", icon: LayoutDashboardIcon },
-    { name: "Add Shows", path: "/admin/addshow", icon: PlusSquareIcon },
-    { name: "List Show", path: "/admin/listshow", icon: ListIcon },
+    { name: "Add Shows", path: "/admin/addshows", icon: PlusSquareIcon },
+    { name: "List Show", path: "/admin/listshows", icon: ListIcon },
     {
       name: "List Bookings",
-      path: "/admin/listbooking",
+      path: "/admin/listbookings",
       icon: ListCollapseIcon,
     },
   ];
