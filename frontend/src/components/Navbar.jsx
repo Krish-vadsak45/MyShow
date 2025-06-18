@@ -46,6 +46,7 @@ const Navbar = () => {
                 <Link
                   key={item.name}
                   to={item.path}
+                  onClick={() => scrollTo(0, 0)}
                   className={`text-sm font-medium transition-colors duration-200 ${
                     isActive(item.path)
                       ? "text-red-300"
