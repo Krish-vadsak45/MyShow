@@ -9,7 +9,7 @@ const syncUserCreation = inngest.createFunction(
   { id: "sync-user-from-clerk" },
   { event: "clerk/user.created" },
   async ({ event }) => {
-    console.log(event.data);
+    logger.info("Starting user sync", event.data);
     const {
       id,
       first_name,
@@ -18,22 +18,7 @@ const syncUserCreation = inngest.createFunction(
       image_url,
       phone_numbers,
     } = event.data;
-    await User.create({
-      _id: "testid123",
-      name: "Test User",
-      email: "test@example.com",
-      image: "test.jpg",
-      mobile_no: "+1234567890",
-    });
-    console.log(event.data);
-    await User.create({
-      _id: "testid123",
-      name: "Test User",
-      email: "test@example.com",
-      image: "test.jpg",
-      mobile_no: "+1234567890",
-    });
-    console.log("Dummy user created!");
+    logger.info("Starting user sync", event.data);
 
     const userData = {
       _id: id,
@@ -52,7 +37,7 @@ const syncUserDeletion = inngest.createFunction(
   { event: "clerk/user.deleted" },
   async ({ event }) => {
     const { id } = event.data;
-    console.log(event.data);
+    logger.info("Starting user sync", event.data);
     await User.findByIdAndDelete({ _id: id });
   }
 );
