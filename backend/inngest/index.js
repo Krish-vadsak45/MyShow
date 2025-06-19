@@ -9,7 +9,7 @@ const syncUserCreation = inngest.createFunction(
   { id: "sync-user-from-clerk" },
   { event: "clerk/user.created" },
   async ({ event }) => {
-    logger.info("Starting user sync", event.data);
+    console.log("Starting user sync", event.data);
     const {
       id,
       first_name,
@@ -18,7 +18,15 @@ const syncUserCreation = inngest.createFunction(
       image_url,
       phone_numbers,
     } = event.data;
-    logger.info("Starting user sync", event.data);
+    console.log(
+      "Starting user sync",
+      id,
+      first_name,
+      last_name,
+      email_addresses,
+      image_url,
+      phone_numbers
+    );
 
     const userData = {
       _id: id,
@@ -37,7 +45,8 @@ const syncUserDeletion = inngest.createFunction(
   { event: "clerk/user.deleted" },
   async ({ event }) => {
     const { id } = event.data;
-    logger.info("Starting user sync", event.data);
+    console.log("Starting user sync", event.data);
+
     await User.findByIdAndDelete({ _id: id });
   }
 );
@@ -55,7 +64,8 @@ const syncUserUpdate = inngest.createFunction(
       image_url,
       phone_numbers,
     } = event.data;
-    console.log(event.data);
+    console.log("Starting user sync", event.data);
+
     const userData = {
       _id: id,
       email: email_addresses[0].email_address,
