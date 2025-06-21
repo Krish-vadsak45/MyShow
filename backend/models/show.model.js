@@ -3,7 +3,7 @@ import Movie from "../models/movie.model.js";
 
 const showSchema = new mongoose.Schema(
   {
-    Movie: { type: String, required: true, ref: Movie },
+    movie: { type: String, required: true, ref: "Movie" },
     showDateTime: { type: String, required: true },
     showPrice: { type: Number, required: true },
     occupiedSeats: { type: Object, default: {} },
