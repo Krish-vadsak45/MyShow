@@ -5,8 +5,8 @@ import Movie from "../models/movie.model.js";
 // API controller Function to get user bookings
 export const getUserBookings = async (req, res) => {
   try {
-    const user = req.auth().userId;
-    const bookings = await Booking.find(user)
+    const userId = req.auth().userId;
+    const bookings = await Booking.find({ user: userId })
       .populate({
         path: "show",
         populate: { path: "movie" },
