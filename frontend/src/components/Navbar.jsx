@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Search, Menu, X, TicketPlus } from "lucide-react";
 import { assets } from "../assets/assets";
 import { useUser, useClerk, UserButton } from "@clerk/clerk-react";
+import { useAppContext } from "../context/AppContext";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -11,6 +12,8 @@ const Navbar = () => {
   const { openSignIn } = useClerk();
 
   const navigate = useNavigate();
+
+  const { favouriteMovies } = useAppContext();
 
   const navigationItems = [
     { name: "Home", path: "/" },
@@ -42,20 +45,25 @@ const Navbar = () => {
                   min-md: rounded-full backdrop-blur bg-black/70 md:bg-white/10 md:border
                   border-gray-300/20 overflow-hidden transition-[width] duration-300"
             >
-              {navigationItems.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.path}
-                  onClick={() => scrollTo(0, 0)}
-                  className={`text-sm font-medium transition-colors duration-200 ${
-                    isActive(item.path)
-                      ? "text-red-300"
-                      : "text-gray-300 hover:text-white"
-                  }`}
-                >
-                  {item.name}
-                </Link>
-              ))}
+              {navigationItems
+                .filter(
+                  (item) =>
+                    item.name !== "favourite" || favouriteMovies.length > 0
+                )
+                .map((item) => (
+                  <Link
+                    key={item.name}
+                    to={item.path}
+                    onClick={() => scrollTo(0, 0)}
+                    className={`text-sm font-medium transition-colors duration-200 ${
+                      isActive(item.path)
+                        ? "text-red-300"
+                        : "text-gray-300 hover:text-white"
+                    }`}
+                  >
+                    {item.name}
+                  </Link>
+                ))}
             </div>
           </div>
 

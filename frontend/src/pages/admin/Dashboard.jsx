@@ -11,8 +11,12 @@ import Title from "../../components/admin/Title";
 import Loading from "../../components/Loading";
 import BlurCircle from "../../components/BlurCircle";
 import { dateFormat } from "../../lib/dateFormat";
+import { useAppContext } from "../../context/AppContext.jsx";
+import toast from "react-hot-toast";
 
 const Dashboard = () => {
+  const { axios, getToken, user, image_base_url } = useAppContext();
+
   const currency = import.meta.env.VITE_CURRENCY;
 
   const [dashboardData, setDashboardData] = useState({
@@ -48,13 +52,31 @@ const Dashboard = () => {
   ];
 
   const fetchDashboardData = async () => {
-    setDashboardData(dummyDashboardData);
-    setLoading(false);
+    try {
+      const { data } = await axios.get("/api/admin/dashboard", {
+        headers: {
+          Authorization: `Bearer ${await getToken()}`,
+        },
+      });
+      console.log(data);
+      if (data.success) {
+        setDashboardData(data.dashboardData);
+        setLoading(false);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Error fetching dashboard data: ", error);
+    }
+    // setDashboardData(dummyDashboardData);
   };
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    if (user) {
+      fetchDashboardData();
+    }
+  }, [user]);
 
   return !loading ? (
     <>
@@ -90,7 +112,7 @@ const Dashboard = () => {
             hover :- translate-y-1 transition duration-300"
           >
             <img
-              src={show.movie.poster_path}
+              src={image_base_url + show.movie.poster_path}
               alt=""
               className="h-60
               w-full object-cover"

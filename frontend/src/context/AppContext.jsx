@@ -13,6 +13,8 @@ export const AppProvider = ({ children }) => {
   const [shows, setShows] = useState([]);
   const [favouriteMovies, setFavouriteMovie] = useState([]);
 
+  const image_base_url = import.meta.env.VITE_TMDB_IMAGE_BASE_URL;
+
   const { user } = useUser();
   const { getToken } = useAuth();
   const location = useLocation();
@@ -54,8 +56,11 @@ export const AppProvider = ({ children }) => {
           Authorization: `Bearer ${await getToken()}`,
         },
       });
-      if (data.success) {
-        setFavouriteMovie(data.movies);
+      // console.log("in app", data.movie);
+      if (data.movies > 0) {
+        setFavouriteMovie([]);
+      } else if (data.success) {
+        setFavouriteMovie(data.movie);
       } else {
         toast.error(data.message);
       }
@@ -85,6 +90,7 @@ export const AppProvider = ({ children }) => {
     shows,
     favouriteMovies,
     fetchFavouriteMovies,
+    image_base_url,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

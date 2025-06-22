@@ -13,7 +13,7 @@ export const getNowPlayingMovies = async (req, res) => {
       }
     );
 
-    console.log(data);
+    // console.log(data);
     const movies = data.results;
     res.json({ success: true, movies: movies });
   } catch (error) {
@@ -26,18 +26,18 @@ export const getNowPlayingMovies = async (req, res) => {
 
 export const addShow = async (req, res) => {
   try {
-    const { movieId, showsInput, showPrice } = req.body;
+    // console.log(req.body);
+    const { movieId, showInput, showPrice } = req.body;
+    // console.log(showInput);
 
     let movie = await Movie.findById(movieId);
 
     if (!movie) {
       const [movieDetailResponse, movieCreditResponse] = await Promise.all([
         axios.get(`https://api.themoviedb.org/3/movie/${movieId}`, {
-          accept: "application/json",
           headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
         }),
         axios.get(`https://api.themoviedb.org/3/movie/${movieId}/credits`, {
-          accept: "application/json",
           headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
         }),
       ]);
@@ -54,7 +54,7 @@ export const addShow = async (req, res) => {
         original_language: movieApiData.original_language,
         tagline: movieApiData.tagline || "",
         genres: movieApiData.genres,
-        cast: movieApiData.cast,
+        cast: movieCreditData.cast,
         vote_average: movieApiData.vote_average,
         runtime: movieApiData.runtime,
       };
@@ -63,7 +63,7 @@ export const addShow = async (req, res) => {
     }
 
     const showsToCreate = [];
-    showsInput.forEach((show) => {
+    showInput.forEach((show) => {
       const showDate = show.date;
       show.time.forEach((time) => {
         const dateTimeString = `${showDate}T${time}`;
