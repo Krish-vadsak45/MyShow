@@ -25,7 +25,10 @@ export const stripeWebhooks = async (req, res) => {
         });
 
         const session = sessionList.data[0];
+        console.log(session);
+        console.log(session.metadata);
         const { bookingId } = session.metadata;
+        console.log(bookingId);
 
         await Booking.findByIdAndUpdate(bookingId, {
           isPaid: true,
