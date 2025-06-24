@@ -79,7 +79,7 @@ export const addShow = async (req, res) => {
     if (showsToCreate.length > 0) {
       await Show.insertMany(showsToCreate);
     }
-
+    console.log(movie);
     // Trigger Inngest event
     await inngest.send({
       name: "app/show.added",
@@ -129,6 +129,7 @@ export const getShow = async (req, res) => {
       }
       dateTime[date].push({ time: show.showDateTime, showId: show._id });
     });
+    console.log(movie);
     res.json({ success: true, movie, dateTime });
   } catch (error) {
     console.log(error);
