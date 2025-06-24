@@ -226,6 +226,10 @@ const sendNewShowNotifications = inngest.createFunction(
   async (event) => {
     console.log(event);
     console.log(event.data);
+    if (!event.data || !event.data.movieTitle) {
+      console.error("Missing movieTitle in event.data", event.data);
+      return;
+    }
     const { movieTitle } = event.data;
     const users = await User.find({});
     for (const user of users) {
