@@ -224,6 +224,8 @@ const sendNewShowNotifications = inngest.createFunction(
   { id: "send-new-show-notifications" },
   { event: "app/show.added" },
   async (event) => {
+    console.log(event);
+    console.log(event.data);
     const { movieTitle } = event.data;
     const users = await User.find({});
     for (const user of users) {
