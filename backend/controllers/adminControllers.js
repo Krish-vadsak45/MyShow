@@ -4,6 +4,7 @@ import User from "../models/user.model.js";
 
 // API to check if a user is a admin
 export const isAdmin = (req, res) => {
+  console.log(isAdmin);
   res.json({ success: true, isAdmin: true });
 };
 
