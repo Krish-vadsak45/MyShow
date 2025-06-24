@@ -101,9 +101,14 @@ export const getShows = async (req, res) => {
       .populate("movie")
       .sort({ showDateTime: 1 });
 
-    const uniqueShow = new Set(shows.map((show) => show.movie));
+    const uniqueShow = new Map();
 
-    res.json({ success: true, shows: Array.from(uniqueShow) });
+    shows.forEach((show) => {
+      if (show.movie && !uniqueShow.has(show.movie._id.toString())) {
+        uniqueShow.set(show.movie._id.toString(), show.movie);
+      }
+    });
+    res.json({ success: true, shows: Array.from(uniqueShow.values()) });
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: error.message });
