@@ -79,7 +79,6 @@ export const addShow = async (req, res) => {
     if (showsToCreate.length > 0) {
       await Show.insertMany(showsToCreate);
     }
-    console.log(movie);
     // Trigger Inngest event
     await inngest.send({
       name: "app/show.added",
