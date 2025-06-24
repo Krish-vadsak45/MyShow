@@ -223,7 +223,7 @@ const sendShowReminders = inngest.createFunction(
 const sendNewShowNotifications = inngest.createFunction(
   { id: "send-new-show-notifications" },
   { event: "app/show.added" },
-  async (event) => {
+  async ({ event }) => {
     console.log(event);
     console.log(event.data);
     if (!event.data || !event.data.movieTitle) {
