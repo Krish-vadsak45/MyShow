@@ -14,7 +14,7 @@ const Favourite = () => {
       <BlurCircle bottom="150px" right="0px" />
 
       <h1 className="text-lg font-medium my-4">Your Favourite Movies</h1>
-      <div className="flex flex-wrap max-sm: justify-center gap-8">
+      <div className="flex flex-wrap gap-8">
         {favouriteMovies.map((movie) => (
           <MovieCard movie={movie} key={movie._id} />
         ))}

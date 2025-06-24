@@ -17,10 +17,11 @@ import ListBookings from "./pages/admin/ListBookings";
 import { useAppContext } from "./context/AppContext";
 import { SignIn } from "@clerk/clerk-react";
 import Loading from "./components/Loading";
+import AccessDenied from "./components/admin/AccessDenied";
 
 function App() {
   const isAdminRoute = useLocation().pathname.startsWith("/admin");
-  const { user } = useAppContext();
+  const { user, isAdmin } = useAppContext();
 
   return (
     <>
@@ -38,7 +39,11 @@ function App() {
           path="/admin/*"
           element={
             user ? (
-              <Layout />
+              isAdmin ? (
+                <Layout />
+              ) : (
+                <AccessDenied />
+              )
             ) : (
               <div className="min-h-screen flex justify-center items-center">
                 <SignIn fallbackRedirectUrl={"/admin"} />

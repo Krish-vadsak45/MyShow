@@ -1,7 +1,23 @@
 import React from "react";
 import { assets } from "../assets/assets";
+import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { useAppContext } from "../context/AppContext";
 
 const Footer = () => {
+  const navigate = useNavigate();
+
+  const { favouriteMovies } = useAppContext();
+  const navigationItems = [
+    { name: "Home", path: "/" },
+    { name: "Movies", path: "/movies" },
+    { name: "Theatres", path: "/theatres" },
+    { name: "Releases", path: "/releases" },
+    { name: "favourite", path: "/favourite" },
+  ];
+  const isActive = (path) => {
+    return location.pathname === path;
+  };
   return (
     <footer className="px-6 md:px-16 lg:px-36 mt-40 w-full text-gray-300">
       <div className="flex flex-col md:flex-row justify-between w-full gap-10 border-b border-gray-500 pb-14">
@@ -28,20 +44,27 @@ const Footer = () => {
         <div className="flex-1 flex items-start md:justify-end gap-20 md:gap-40">
           <div>
             <h2 className="font-semibold mb-5">Company</h2>
-            <ul className="text-sm space-y-2">
-              <li>
-                <a href="#">Home</a>
-              </li>
-              <li>
-                <a href="#">About us</a>
-              </li>
-              <li>
-                <a href="#">Contact us</a>
-              </li>
-              <li>
-                <a href="#">Privacy policy</a>
-              </li>
-            </ul>
+            <div className="flex flex-col">
+              {navigationItems
+                .filter(
+                  (item) =>
+                    item.name !== "favourite" || favouriteMovies.length > 0
+                )
+                .map((item) => (
+                  <Link
+                    key={item.name}
+                    to={item.path}
+                    onClick={() => scrollTo(0, 0)}
+                    className={`text-sm font-medium transition-colors duration-200 ${
+                      isActive(item.path)
+                        ? "text-red-300"
+                        : "text-gray-300 hover:text-white"
+                    }`}
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+            </div>
           </div>
           <div>
             <h2 className="font-semibold mb-5">Get in touch</h2>
@@ -53,7 +76,7 @@ const Footer = () => {
         </div>
       </div>
       <p className="pt-4 text-center text-sm pb-5">
-        Copyright {new Date().getFullYear()} © PreBuiltUI. All Right Reserved.
+        Copyright {new Date().getFullYear()} © MyShow. All Right Reserved.
       </p>
     </footer>
   );

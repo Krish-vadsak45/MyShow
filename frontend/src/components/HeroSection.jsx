@@ -48,7 +48,7 @@ const HeroSection = () => {
             navigate("/movies");
             scrollTo(0, 0);
           }}
-          className="flex items-center gap-1 px-6 py-3 text-sm bg-primary
+          className="flex items-center gap-1 px-6 py-3 mt-2 text-sm bg-primary
 hover:bg-primary-dull transition rounded-full font-medium cursor-pointer"
         >
           Explore Movies
