@@ -22,7 +22,7 @@ export const AppProvider = ({ children }) => {
 
   const fetchIsAdmin = async () => {
     try {
-      console.log(req.auth());
+      // console.log(useAuth());
       const { data } = await axios.get("/api/admin/is-admin", {
         headers: {
           Authorization: `Bearer ${await getToken()}`,
