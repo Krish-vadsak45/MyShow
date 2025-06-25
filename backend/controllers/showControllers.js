@@ -70,12 +70,13 @@ export const addShow = async (req, res) => {
         const dateTimeString = `${showDate}T${time}`;
         showsToCreate.push({
           movie: movieId,
-          showDateTime: new Date(dateTimeString),
+          showDateTime: new Date(dateTimeString).toISOString(),
           showPrice,
           occupiedSeats: {},
         });
       });
     });
+    console.log(showsToCreate);
     if (showsToCreate.length > 0) {
       await Show.insertMany(showsToCreate);
     }
@@ -97,7 +98,8 @@ export const addShow = async (req, res) => {
 // API to get all shows for a database
 export const getShows = async (req, res) => {
   try {
-    const shows = await Show.find({ showDateTime: { $gte: new Date() } })
+    const now = new Date().toISOString();
+    const shows = await Show.find({ showDateTime: { $gte: now } })
       .populate("movie")
       .sort({ showDateTime: 1 });
 
@@ -122,10 +124,11 @@ export const getShows = async (req, res) => {
 // API to get a single shows for a database
 export const getShow = async (req, res) => {
   try {
+    const now = new Date().toISOString();
     const { movieId } = req.params;
     const shows = await Show.find({
       movie: movieId,
-      showDateTime: { $gte: new Date() },
+      showDateTime: { $gte: now },
     });
     const movie = await Movie.findById(movieId);
     const dateTime = {};

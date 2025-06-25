@@ -12,11 +12,17 @@ export const isAdmin = (req, res) => {
 export const getDashboardData = async (req, res) => {
   try {
     const bookings = await Booking.find({ isPaid: true });
+    const now = new Date().toISOString();
+    // console.log("Server time (UTC):", now.toISOString());
     const activeShows = await Show.find({
-      showDateTime: { $gte: new Date() },
+      showDateTime: { $gte: now },
     }).populate("movie");
 
-    console.log(activeShows);
+    // console.log("active ;", activeShows);
+    // console.log("Server time (UTC):", new Date().toISOString());
+    // activeShows.forEach((show) => {
+    //   console.log("Show (UTC):", show.showDateTime.toISOString());
+    // });
 
     const totalUser = await User.countDocuments();
 
@@ -37,11 +43,13 @@ export const getDashboardData = async (req, res) => {
 // API to get all show
 export const getAllShows = async (req, res) => {
   try {
+    const now = new Date().toISOString();
     const shows = await Show.find({
-      showDateTime: { $gte: new Date() },
+      showDateTime: { $gte: now },
     })
       .populate("movie")
       .sort({ showDateTime: 1 });
+    console.log("hello", shows);
     res.json({ success: true, shows });
   } catch (error) {
     console.error(error.message);
