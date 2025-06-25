@@ -56,6 +56,7 @@ export const addShow = async (req, res) => {
         tagline: movieApiData.tagline || "",
         genres: movieApiData.genres,
         cast: movieCreditData.cast,
+        crew: movieCreditData.crew,
         vote_average: movieApiData.vote_average,
         runtime: movieApiData.runtime,
       };

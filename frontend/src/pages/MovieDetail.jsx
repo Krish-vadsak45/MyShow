@@ -126,19 +126,47 @@ const MovieDetail = () => {
           </div>
         </div>
       </div>
-      <p>Your Favourite Cast</p>
+
+      <p className="mt-5">Your Favourite Cast</p>
       <div className="overflow-x-auto no-scrollbar mt-8 pb-4">
         <div className="flex items-center gap-4 w-max px-4">
-          {show.movie.cast.slice(0, 12).map((cast, index) => (
-            <div key={index} className="flex flex-col items-center text-center">
-              <img
-                src={image_base_url + cast.profile_path}
-                alt=""
-                className="rounded-full h-20 md:h-20 aspect-square object-cover"
-              />
-              <p className="font-medium text-xs mt-3">{cast.name}</p>
-            </div>
-          ))}
+          {show.movie.cast
+            .filter((cast) => cast.profile_path)
+            .slice(0, 12)
+            .map((cast, index) => (
+              <div
+                key={index}
+                className="flex flex-col items-center text-center"
+              >
+                <img
+                  src={image_base_url + cast.profile_path}
+                  alt=""
+                  className="rounded-full h-20 md:h-20 aspect-square object-cover"
+                />
+                <p className="font-medium text-xs mt-3">{cast.name}</p>
+              </div>
+            ))}
+        </div>
+      </div>
+      <p className="mt-5">Your Favourite Crew</p>
+      <div className="overflow-x-auto no-scrollbar mt-8 pb-4">
+        <div className="flex items-center gap-4 w-max px-4">
+          {show.movie.crew
+            .filter((crew) => crew.profile_path)
+            .slice(0, 12)
+            .map((crew, index) => (
+              <div
+                key={index}
+                className="flex flex-col items-center text-center"
+              >
+                <img
+                  src={image_base_url + crew.profile_path}
+                  alt=""
+                  className="rounded-full h-20 md:h-20 aspect-square object-cover"
+                />
+                <p className="font-medium text-xs mt-3">{crew.name}</p>
+              </div>
+            ))}
         </div>
       </div>
       <DateSelect dateTime={show.dateTime} id={id} />
