@@ -16,6 +16,8 @@ export const getDashboardData = async (req, res) => {
       showDateTime: { $gte: new Date() },
     }).populate("movie");
 
+    console.log(activeShows);
+
     const totalUser = await User.countDocuments();
 
     const dashboardData = {
