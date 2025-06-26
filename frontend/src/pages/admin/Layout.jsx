@@ -8,11 +8,11 @@ import Loading from "../../components/Loading";
 const Layout = () => {
   const { isAdmin, fetchIsAdmin } = useAppContext();
 
-  useEffect(() => {
-    fetchIsAdmin();
+  useEffect(async () => {
+    await fetchIsAdmin();
   }, []);
 
-  return isAdmin ? (
+  return isAdmin != null ? (
     <>
       <AdminNavbar />
       <div className="flex">

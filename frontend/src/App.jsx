@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "./components/Navbar";
 import { Route, Routes, useLocation } from "react-router-dom";
 import Home from "./pages/Home";
@@ -21,7 +21,11 @@ import AccessDenied from "./components/admin/AccessDenied";
 
 function App() {
   const isAdminRoute = useLocation().pathname.startsWith("/admin");
-  const { user, isAdmin } = useAppContext();
+  const { user, isAdmin, fetchIsAdmin } = useAppContext();
+
+  // useEffect(async () => {
+  //   await fetchIsAdmin();
+  // }, []);
 
   return (
     <>

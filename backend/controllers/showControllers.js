@@ -77,7 +77,7 @@ export const addShow = async (req, res) => {
         });
       });
     });
-    console.log(showsToCreate);
+    // console.log(showsToCreate);
     if (showsToCreate.length > 0) {
       await Show.insertMany(showsToCreate);
     }
@@ -104,7 +104,7 @@ export const getShows = async (req, res) => {
       .populate("movie")
       .sort({ showDateTime: 1 });
 
-    console.log("hii  ", shows.length);
+    // console.log("hii  ", shows.length);
 
     const uniqueMoviesMap = new Map();
 
@@ -114,7 +114,7 @@ export const getShows = async (req, res) => {
         uniqueMoviesMap.set(movieId, show.movie);
       }
     });
-    console.log(uniqueMoviesMap.values());
+    // console.log(uniqueMoviesMap.values());
     res.json({ success: true, shows: Array.from(uniqueMoviesMap.values()) });
   } catch (error) {
     console.log(error);
@@ -141,7 +141,7 @@ export const getShow = async (req, res) => {
       }
       dateTime[date].push({ time: show.showDateTime, showId: show._id });
     });
-    console.log(movie);
+    // console.log(movie);
     res.json({ success: true, movie, dateTime });
   } catch (error) {
     console.log(error);
