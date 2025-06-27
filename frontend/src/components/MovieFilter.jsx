@@ -50,8 +50,8 @@ const MovieFilter = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedGenres, setSelectedGenres] = useState([]);
   const [selectedLanguages, setSelectedLanguages] = useState([]);
-  const [dateFrom, setDateFrom] = useState(Date);
-  const [dateTo, setDateTo] = useState(Date);
+  const [dateFrom, setDateFrom] = useState();
+  const [dateTo, setDateTo] = useState();
   const [showFilters, setShowFilters] = useState(false);
 
   const { shows } = useAppContext();

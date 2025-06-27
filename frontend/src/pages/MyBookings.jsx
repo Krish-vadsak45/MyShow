@@ -4,8 +4,10 @@ import BlurCircle from "../components/BlurCircle";
 import timeFormat from "../lib/timeFormat";
 import { dateFormat } from "../lib/dateFormat";
 import { useAppContext } from "../context/AppContext";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import MovieTicket from "../components/MovieTicket";
+import NotExist from "../components/NotExist";
+import { Calendar } from "lucide-react";
 
 const MyBookings = () => {
   const { axios, user, image_base_url, getToken } = useAppContext();
@@ -13,6 +15,7 @@ const MyBookings = () => {
   const currency = import.meta.env.VITE_CURRENCY;
   const [bookings, setBookings] = useState([]);
   const [isloading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   const getMyBookings = async () => {
     try {
@@ -35,6 +38,18 @@ const MyBookings = () => {
       getMyBookings();
     }
   }, [user]);
+
+  if (!isloading && bookings.length === 0) {
+    return (
+      <NotExist
+        title="No Bookings Yet"
+        message="You haven't made any movie bookings yet. Discover amazing movies and book your seats for an unforgettable cinema experience!"
+        buttonLabel="Book Movies"
+        redirectPath="/movies"
+        icon={Calendar}
+      />
+    );
+  }
 
   return !isloading && bookings.length !== 0 ? (
     <div className="relative px-6 md:px-16 lg:px-40 pt-30 md:pt-40 min-h-[80vh]">
@@ -102,8 +117,6 @@ p-4"
         </div>
       ))}
     </div>
-  ) : bookings.length === 0 ? (
-    <div>you dont book movie yet</div>
   ) : (
     <Loading />
   );

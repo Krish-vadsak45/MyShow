@@ -21,7 +21,7 @@ import AccessDenied from "./components/admin/AccessDenied";
 
 function App() {
   const isAdminRoute = useLocation().pathname.startsWith("/admin");
-  const { user, isAdmin, fetchIsAdmin } = useAppContext();
+  const { user } = useAppContext();
 
   // useEffect(async () => {
   //   await fetchIsAdmin();
@@ -43,11 +43,7 @@ function App() {
           path="/admin/*"
           element={
             user ? (
-              isAdmin ? (
-                <Layout />
-              ) : (
-                <AccessDenied />
-              )
+              <Layout />
             ) : (
               <div className="min-h-screen flex justify-center items-center">
                 <SignIn fallbackRedirectUrl={"/admin"} />

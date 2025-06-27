@@ -4,15 +4,19 @@ import AdminSidebar from "../../components/admin/AdminSidebar";
 import { Outlet } from "react-router-dom";
 import { useAppContext } from "../../context/AppContext";
 import Loading from "../../components/Loading";
+import AccessDenied from "@/components/admin/AccessDenied";
 
 const Layout = () => {
   const { isAdmin, fetchIsAdmin } = useAppContext();
 
-  useEffect(async () => {
-    await fetchIsAdmin();
+  useEffect(() => {
+    async function fetchData() {
+      await fetchIsAdmin();
+    }
+    fetchData();
   }, []);
 
-  return isAdmin != null ? (
+  return isAdmin === true ? (
     <>
       <AdminNavbar />
       <div className="flex">
@@ -22,8 +26,10 @@ const Layout = () => {
         </div>
       </div>
     </>
+  ) : isAdmin === false ? (
+    <AccessDenied />
   ) : (
-    <Loading />
+    isAdmin === null && <Loading />
   );
 };
 

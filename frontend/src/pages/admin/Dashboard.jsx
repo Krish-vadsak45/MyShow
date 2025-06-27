@@ -58,7 +58,7 @@ const Dashboard = () => {
           Authorization: `Bearer ${await getToken()}`,
         },
       });
-      console.log(data);
+      // console.log(data);
       if (data.success) {
         setDashboardData(data.dashboardData);
         setLoading(false);

@@ -45,25 +45,20 @@ const Navbar = () => {
                   min-md: rounded-full backdrop-blur bg-black/70 md:bg-white/10 md:border
                   border-gray-300/20 overflow-hidden transition-[width] duration-300"
             >
-              {navigationItems
-                .filter(
-                  (item) =>
-                    item.name !== "favourite" || favouriteMovies.length > 0
-                )
-                .map((item) => (
-                  <Link
-                    key={item.name}
-                    to={item.path}
-                    onClick={() => scrollTo(0, 0)}
-                    className={`text-sm font-medium transition-colors duration-200 ${
-                      isActive(item.path)
-                        ? "text-red-300"
-                        : "text-gray-300 hover:text-white"
-                    }`}
-                  >
-                    {item.name}
-                  </Link>
-                ))}
+              {navigationItems.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.path}
+                  onClick={() => scrollTo(0, 0)}
+                  className={`text-sm font-medium transition-colors duration-200 ${
+                    isActive(item.path)
+                      ? "text-red-300"
+                      : "text-gray-300 hover:text-white"
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              ))}
             </div>
           </div>
 
