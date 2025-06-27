@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { dummyBookingData } from "../assets/assets";
 import Loading from "../components/Loading";
 import BlurCircle from "../components/BlurCircle";
 import timeFormat from "../lib/timeFormat";
 import { dateFormat } from "../lib/dateFormat";
 import { useAppContext } from "../context/AppContext";
 import { Link } from "react-router-dom";
+import MovieTicket from "../components/MovieTicket";
 
 const MyBookings = () => {
   const { axios, user, image_base_url, getToken } = useAppContext();
@@ -22,12 +22,12 @@ const MyBookings = () => {
         },
       });
       if (data.success) {
+        console.log(data.bookings);
         setBookings(data.bookings);
       }
     } catch (error) {
       console.error(error);
     }
-    // setBookings(dummyBookingData);
     setIsLoading(false);
   };
   useEffect(() => {
@@ -36,7 +36,7 @@ const MyBookings = () => {
     }
   }, [user]);
 
-  return !isloading ? (
+  return !isloading && bookings.length !== 0 ? (
     <div className="relative px-6 md:px-16 lg:px-40 pt-30 md:pt-40 min-h-[80vh]">
       <BlurCircle top="100px" left="100px" />
       <div>
@@ -48,7 +48,7 @@ const MyBookings = () => {
         <div
           key={index}
           className="flex flex-col md:flex-row justify-between
-        bg-primary/8 border border-primary/20 rounded-lg mt-4 p-2 max-w-3x1"
+        bg-primary/8 border border-primary/20 mt-4 p-2 rounded-lg max-w-3x1"
         >
           <div className="flex flex-col md:flex-row">
             <img
@@ -81,7 +81,7 @@ p-4"
                 <Link
                   to={item.paymentLink}
                   className="bg-primary px-4 py-1.5 mb-3
-text-sm rounded-full font-medium cursor-pointer"
+                              text-sm rounded-full font-medium cursor-pointer"
                 >
                   Pay Now
                 </Link>
@@ -96,11 +96,14 @@ text-sm rounded-full font-medium cursor-pointer"
                 <span className="text-gray-400">Seat Number :</span>{" "}
                 {item.bookedSeats.join(", ")}
               </p>{" "}
+              {item.isPaid && <MovieTicket booking={item} />}
             </div>
           </div>
         </div>
       ))}
     </div>
+  ) : bookings.length === 0 ? (
+    <div>you dont book movie yet</div>
   ) : (
     <Loading />
   );

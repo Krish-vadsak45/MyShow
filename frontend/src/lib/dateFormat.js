@@ -7,3 +7,11 @@ export const dateFormat = (date) => {
     minute: "2-digit",
   });
 };
+
+export const dateFormat2 = (date) => {
+  return new Date(date).toLocaleString("en-US", {
+    weekday: "short",
+    month: "long",
+    day: "numeric",
+  });
+};
