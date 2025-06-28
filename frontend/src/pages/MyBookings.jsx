@@ -8,9 +8,11 @@ import { Link, useNavigate } from "react-router-dom";
 import MovieTicket from "../components/MovieTicket";
 import NotExist from "../components/NotExist";
 import { Calendar } from "lucide-react";
+import MovieTicketUi from "../components/MovieTicketUi";
 
 const MyBookings = () => {
   const { axios, user, image_base_url, getToken } = useAppContext();
+  const [selectedBooking, setSelectedBooking] = useState(null);
 
   const currency = import.meta.env.VITE_CURRENCY;
   const [bookings, setBookings] = useState([]);
@@ -38,6 +40,22 @@ const MyBookings = () => {
       getMyBookings();
     }
   }, [user]);
+  const handleViewTicket = (booking) => {
+    setSelectedBooking(booking);
+  };
+  if (selectedBooking) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-600 via-purple-600 to-purple-800">
+        <button
+          onClick={() => setSelectedBooking(null)}
+          className="fixed top-20 left-70 z-50 bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-full hover:bg-white/30 transition-all cursor-pointer"
+        >
+          ← Back to Bookings
+        </button>
+        <MovieTicketUi booking={selectedBooking} />
+      </div>
+    );
+  }
 
   if (!isloading && bookings.length === 0) {
     return (
@@ -111,7 +129,17 @@ p-4"
                 <span className="text-gray-400">Seat Number :</span>{" "}
                 {item.bookedSeats.join(", ")}
               </p>{" "}
-              {item.isPaid && <MovieTicket booking={item} />}
+              <div className="flex space-x-2">
+                {item.isPaid && (
+                  <button
+                    onClick={() => handleViewTicket(item)}
+                    className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-4 mt-3 py-2 rounded-full font-medium transition-all duration-300 transform hover:scale-105 text-sm cursor-pointer"
+                  >
+                    View Ticket
+                  </button>
+                )}
+                {item.isPaid && <MovieTicket booking={item} />}
+              </div>
             </div>
           </div>
         </div>

@@ -23,10 +23,6 @@ function App() {
   const isAdminRoute = useLocation().pathname.startsWith("/admin");
   const { user } = useAppContext();
 
-  // useEffect(async () => {
-  //   await fetchIsAdmin();
-  // }, []);
-
   return (
     <>
       <Toaster />
