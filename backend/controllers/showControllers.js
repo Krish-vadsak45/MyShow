@@ -34,16 +34,24 @@ export const addShow = async (req, res) => {
     let movie = await Movie.findById(movieId);
 
     if (!movie) {
-      const [movieDetailResponse, movieCreditResponse] = await Promise.all([
-        axios.get(`https://api.themoviedb.org/3/movie/${movieId}`, {
-          headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
-        }),
-        axios.get(`https://api.themoviedb.org/3/movie/${movieId}/credits`, {
-          headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
-        }),
-      ]);
+      const [movieDetailResponse, movieCreditResponse, movieTrailerResponse] =
+        await Promise.all([
+          axios.get(`https://api.themoviedb.org/3/movie/${movieId}`, {
+            headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
+          }),
+          axios.get(`https://api.themoviedb.org/3/movie/${movieId}/credits`, {
+            headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
+          }),
+          axios.get(`https://api.themoviedb.org/3/movie/${movieId}/videos`, {
+            headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
+          }),
+        ]);
       const movieApiData = movieDetailResponse.data;
       const movieCreditData = movieCreditResponse.data;
+      const movieTrailerData = movieTrailerResponse.data;
+      const trailer = movieTrailerData.results.find(
+        (vid) => vid.type === "Trailer" && vid.site === "YouTube"
+      );
 
       const movieDetails = {
         _id: movieId,
@@ -59,6 +67,7 @@ export const addShow = async (req, res) => {
         crew: movieCreditData.crew,
         vote_average: movieApiData.vote_average,
         runtime: movieApiData.runtime,
+        trailerKey: trailer ? trailer.key : null,
       };
 
       movie = await Movie.create(movieDetails);

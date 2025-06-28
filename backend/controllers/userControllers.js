@@ -6,13 +6,15 @@ import Movie from "../models/movie.model.js";
 export const getUserBookings = async (req, res) => {
   try {
     const userId = req.auth().userId;
-    const bookings = await Booking.find({ user: userId })
-      .populate({
-        path: "show",
-        populate: { path: "movie" },
-      })
-      .sort({ createAt: -1 });
-    res.json({ success: true, bookings });
+    const bookings = await Booking.find({ user: userId }).populate({
+      path: "show",
+      populate: { path: "movie" },
+    });
+    const now = new Date();
+    const futureBookings = bookings.filter(
+      (booking) => booking.show && new Date(booking.show.showDateTime) > now
+    );
+    res.json({ success: true, bookings: futureBookings });
   } catch (error) {
     console.error(error);
     res.json({ success: false, message: error.message });

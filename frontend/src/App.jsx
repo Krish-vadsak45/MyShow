@@ -18,6 +18,7 @@ import { useAppContext } from "./context/AppContext";
 import { SignIn } from "@clerk/clerk-react";
 import Loading from "./components/Loading";
 import AccessDenied from "./components/admin/AccessDenied";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
 
 function App() {
   const isAdminRoute = useLocation().pathname.startsWith("/admin");
@@ -51,6 +52,7 @@ function App() {
           <Route path="addshows" element={<AddShows />} />
           <Route path="listshows" element={<ListShows />} />
           <Route path="listbookings" element={<ListBookings />} />
+          <Route path="analytics" element={<AdminAnalytics />} />
         </Route>
         <Route path="*" element={<div>Page Not Found</div>} />
       </Routes>
