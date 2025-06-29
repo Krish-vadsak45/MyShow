@@ -5,6 +5,7 @@ import {
   PlusSquareIcon,
   ListIcon,
   ListCollapseIcon,
+  LineChart,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
@@ -18,7 +19,7 @@ const AdminSidebar = () => {
   const adminNavlinks = [
     { name: "Dashboard", path: "/admin", icon: LayoutDashboardIcon },
     { name: "Add Shows", path: "/admin/addshows", icon: PlusSquareIcon },
-    { name: "Analytics", path: "/admin/analytics", icon: PlusSquareIcon },
+    { name: "Analytics", path: "/admin/analytics", icon: LineChart },
     { name: "List Show", path: "/admin/listshows", icon: ListIcon },
     {
       name: "List Bookings",
@@ -33,6 +34,7 @@ const AdminSidebar = () => {
         className="h-9 md:h-14 w-9 md:w-14 rounded-full mx-auto"
         src={user.imageUrl}
         alt="sidebar"
+        loading="lazy"
       />
       <p className="mt-2 text-base max-md:hidden">
         {user.firstName} {user.lastName}

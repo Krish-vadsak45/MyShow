@@ -2,7 +2,6 @@ import { ArrowRight } from "lucide-react";
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import BlurCircle from "./BlurCircle";
-import { dummyShowsData } from "../assets/assets";
 import MovieCard from "./MovieCard";
 import { useAppContext } from "../context/AppContext";
 

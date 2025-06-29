@@ -6,7 +6,6 @@ import {
   UsersIcon,
   StarIcon,
 } from "lucide-react";
-import { dummyDashboardData } from "../../assets/assets";
 import Title from "../../components/admin/Title";
 import Loading from "../../components/Loading";
 import BlurCircle from "../../components/BlurCircle";

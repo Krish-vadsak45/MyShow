@@ -2,11 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Loading from "../components/Loading";
 import { ClockIcon, ArrowRightIcon } from "lucide-react";
-import { dummyDateTimeData, dummyShowsData } from "../assets/assets";
 import IsoTimeFormat from "../lib/IsoTimeFormat";
 import BlurCircle from "../components/BlurCircle";
 import { assets } from "../assets/assets";
-import DateSelect from "../components/DateSelect";
 import toast from "react-hot-toast";
 import { useAppContext } from "../context/AppContext";
 
@@ -167,7 +165,7 @@ const SeatLayout = () => {
         <BlurCircle top="-100px" left="-100px" />
         <BlurCircle bottom="0" right="0" />
         <h1 className="text-2x1 font-semibold mb-4">Select your seat</h1>
-        <img src={assets.screenImage} alt="screen" />
+        <img src={assets.screenImage} alt="screen" loading="lazy" />
         <p className="text-gray-400 text-sm mb-6">SCREEN SIDE</p>
         <div className="flex flex-col items-center mt-10 text-xs text-gray-300">
           <div className="grid grid-cols-2 md:grid-cols-1 gap-8 md:gap-2 mb-6">

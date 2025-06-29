@@ -24,7 +24,6 @@ export const getNowPlayingMovies = async (req, res) => {
 };
 
 //API to add a new show to the database
-
 export const addShow = async (req, res) => {
   try {
     // console.log(req.body);

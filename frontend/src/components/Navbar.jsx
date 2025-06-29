@@ -20,7 +20,8 @@ const Navbar = () => {
     { name: "Movies", path: "/movies" },
     { name: "Theatres", path: "/theatres" },
     { name: "Releases", path: "/releases" },
-    { name: "favourite", path: "/favourite" },
+    { name: "Favourite", path: "/favourite" },
+    { name: "About Us", path: "/aboutus" },
   ];
 
   const isActive = (path) => {
@@ -33,7 +34,12 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2 w-[13%]">
-            <img src={assets.logo} alt="logo image" className="scale-100" />
+            <img
+              src={assets.logo}
+              alt="logo image"
+              className="scale-100"
+              loading="lazy"
+            />
           </Link>
 
           {/* Desktop Navigation - Centered */}
@@ -65,7 +71,10 @@ const Navbar = () => {
           {/* Right side - Search and Login */}
           <div className="flex items-center space-x-4">
             {/* Search Icon */}
-            <a href="#search" className="text-gray-300 hover:text-white p-2 transition-colors duration-200">
+            <a
+              href="#search"
+              className="text-gray-300 hover:text-white p-2 transition-colors duration-200"
+            >
               <Search className="w-5 h-5" />
             </a>
 

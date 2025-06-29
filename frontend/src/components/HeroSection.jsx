@@ -23,6 +23,7 @@ const HeroSection = () => {
           src={assets.marvelLogo}
           alt="marvellogo"
           className="max-h-11 lg:h-11 mt-20"
+          loading="lazy"
         />
         <h1 className="text-5xl md:text-[70px] md:leading-18 font-semibold">
           Guardians <br /> of the Galaxy

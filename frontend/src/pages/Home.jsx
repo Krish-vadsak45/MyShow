@@ -1,6 +1,7 @@
 import HeroSection from "../components/HeroSection.jsx";
 import FeaturedSection from "../components/FeaturedSection.jsx";
 import TrailerSection from "../components/TrailerSection.jsx";
+import ChatBox from "@/components/ChatBox.jsx";
 
 const Home = () => {
   return (
@@ -11,6 +12,7 @@ const Home = () => {
       <FeaturedSection />
       {/* Trailer Section */}
       <TrailerSection />
+      <ChatBox />
     </>
   );
 };

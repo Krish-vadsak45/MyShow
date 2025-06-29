@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import axios from "axios";
 import { useAppContext } from "../../context/AppContext";
+import Loading from "@/components/Loading";
 
 const COLORS = [
   "#8884d8",
@@ -51,7 +52,7 @@ const AdminAnalytics = () => {
     fetchAnalytics();
   }, []);
 
-  if (loading) return <div>Loading analytics...</div>;
+  if (loading) return <Loading />;
   if (!analytics || !analytics.success)
     return <div>Failed to load analytics.</div>;
 
