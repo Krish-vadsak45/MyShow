@@ -49,11 +49,14 @@ const HeroSection = () => {
             navigate("/movies");
             scrollTo(0, 0);
           }}
-          className="flex items-center gap-1 px-6 py-3 mt-2 text-sm bg-primary
-hover:bg-primary-dull transition rounded-full font-medium cursor-pointer"
+          className="group flex items-center gap-2 mt-1 px-6 py-2 text-white bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 rounded-full font-medium text-lg shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 transition-all duration-200 ease-out cursor-pointer"
         >
-          Explore Movies
-          <ArrowRight className="w-5 h-5" />
+          <span className="group-hover:-translate-x-1 transition-transform duration-200">
+            Explore Movies
+          </span>
+          <span className="inline-block transition-all duration-500 linear group-hover:translate-x-200 group-hover:opacity-0">
+            <ArrowRight className="w-5 h-5 " />
+          </span>
         </button>
       </div>
     </div>

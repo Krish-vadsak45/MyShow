@@ -11,13 +11,6 @@ const Movies = () => {
       <MovieFilter />
       <BlurCircle top="150px" left="0px" />
       <BlurCircle bottom="150px" right="0px" />
-
-      {/* <h1 className="text-lg font-medium my-4">Now Showing</h1>
-      <div className="flex flex-wrap  gap-8">
-        {shows.map((movie) => (
-          <MovieCard movie={movie} key={movie._id} />
-        ))}
-      </div> */}
     </div>
   ) : (
     <div className="flex flex-col items-center justify-center h-screen">

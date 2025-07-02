@@ -147,7 +147,7 @@ const MovieFilter = () => {
     (dateTo ? 1 : 0);
 
   return (
-    <div id="search" className="flex justify-end">
+    <div className="flex justify-end">
       <div className="container mx-auto py-8">
         {/* Search and Filter Controls */}
         <div className="mb-8 space-y-4">

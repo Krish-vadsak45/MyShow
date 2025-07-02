@@ -13,7 +13,7 @@ const Footer = () => {
     { name: "Movies", path: "/movies" },
     { name: "Theatres", path: "/theatres" },
     { name: "Releases", path: "/releases" },
-    { name: "favourite", path: "/favourite" },
+    { name: "Favourite", path: "/favourite" },
     { name: "About Us", path: "/aboutus" },
   ];
   const isActive = (path) => {

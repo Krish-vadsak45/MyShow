@@ -43,19 +43,6 @@ const MyBookings = () => {
   const handleViewTicket = (booking) => {
     setSelectedBooking(booking);
   };
-  if (selectedBooking) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-600 via-purple-600 to-purple-800">
-        <button
-          onClick={() => setSelectedBooking(null)}
-          className="fixed top-20 left-70 z-50 bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-full hover:bg-white/30 transition-all cursor-pointer"
-        >
-          ← Back to Bookings
-        </button>
-        <MovieTicketUi booking={selectedBooking} />
-      </div>
-    );
-  }
 
   if (!isloading && bookings.length === 0) {
     return (
@@ -76,7 +63,6 @@ const MyBookings = () => {
         <BlurCircle bottom="0px" left="600px" />
       </div>
       <h1 className="text-lg font-semibold mb-4">My Bookings</h1>
-
       {bookings.map((item, index) => (
         <div
           key={index}
@@ -144,6 +130,20 @@ p-4"
           </div>
         </div>
       ))}
+      {selectedBooking && (
+        <div className="fixed min-h-screen inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-sm ">
+          <button
+            onClick={() => setSelectedBooking(null)}
+            className="fixed top-20 left-70 z-50 bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-full hover:bg-white/30 transition-all cursor-pointer group flex items-center"
+          >
+            <span className="inline-block transition-all ease-in duration-300 group-hover:-translate-x-80">
+              ←
+            </span>
+            <span className="ml-1">Back to Bookings</span>
+          </button>
+          <MovieTicketUi booking={selectedBooking} />
+        </div>
+      )}
     </div>
   ) : (
     <Loading />

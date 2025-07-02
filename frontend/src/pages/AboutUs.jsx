@@ -1,7 +1,5 @@
 import {
-  Users,
   Target,
-  Award,
   Heart,
   Zap,
   Shield,
@@ -13,15 +11,10 @@ import {
   Globe,
 } from "lucide-react";
 import BlurCircle from "@/components/BlurCircle";
+import StateSection from "@/components/StateSection";
+import { assets } from "@/assets/assets";
 
 const AboutUs = () => {
-  const stats = [
-    { icon: Users, label: "Happy Customers", value: "50K+" },
-    { icon: MapPin, label: "Cinema Locations", value: "25+" },
-    { icon: Star, label: "Movies Available", value: "1000+" },
-    { icon: Award, label: "Years of Service", value: "8+" },
-  ];
-
   const values = [
     {
       icon: Heart,
@@ -95,28 +88,6 @@ const AboutUs = () => {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 ">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, index) => {
-              const IconComponent = stat.icon;
-              return (
-                <div key={index} className="text-center">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-500/20 rounded-full mb-4">
-                    <IconComponent className="w-8 h-8 text-blue-400" />
-                  </div>
-                  <div className="text-3xl md:text-4xl font-bold text-white mb-2">
-                    {stat.value}
-                  </div>
-                  <div className="text-gray-400">{stat.label}</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
       {/* Our Story Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
@@ -145,18 +116,26 @@ const AboutUs = () => {
               </div>
             </div>
             <div className="relative">
-              <div className="aspect-video bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <div className="text-center">
-                  <Globe className="w-16 h-16 text-white mb-4 mx-auto" />
-                  <p className="text-white text-xl font-semibold">
-                    Connecting Movie Lovers Worldwide
-                  </p>
-                </div>
+              <div className="absolute -top-6 -left-6 w-24 h-24 bg-primary rounded-lg opacity-50"></div>
+              <div className="relative z-10 rounded-lg overflow-hidden shadow-xl">
+                <img
+                  src={assets.Ourstory2}
+                  width={800}
+                  height={600}
+                  alt="QuickRide founding team"
+                  className="w-full h-auto"
+                  loading="lazy"
+                />
               </div>
+              <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-primary-dull rounded-lg opacity-50"></div>
+              <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-primary-dull rounded-lg opacity-50"></div>
             </div>
           </div>
         </div>
       </section>
+
+      {/* Stats Section */}
+      <StateSection />
 
       {/* Values Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 ">
@@ -175,7 +154,7 @@ const AboutUs = () => {
               return (
                 <div
                   key={index}
-                  className="bg-gray-800/50 rounded-lg p-6 hover:bg-gray-800/70 transition-colors hover:scale-105 hover:rotate-2"
+                  className="bg-gray-800/50 rounded-lg p-6 hover:bg-gray-800/70 transition-all duration-300 ease-in-out hover:scale-105 hover:rotate-2"
                 >
                   <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-500/20 rounded-lg mb-4">
                     <IconComponent className="w-6 h-6 text-blue-400" />

@@ -71,11 +71,19 @@ const Navbar = () => {
           {/* Right side - Search and Login */}
           <div className="flex items-center space-x-4">
             {/* Search Icon */}
-            <a
-              href="#search"
-              className="text-gray-300 hover:text-white p-2 transition-colors duration-200"
-            >
-              <Search className="w-5 h-5" />
+            <a className="text-gray-300 hover:text-white p-2 transition-colors duration-200">
+              <Search
+                onClick={() => {
+                  navigate("/movies");
+                  setTimeout(() => {
+                    window.scrollTo({
+                      top: 0,
+                      behavior: "smooth",
+                    });
+                  }, 100);
+                }}
+                className="w-5 h-5 cursor-pointer"
+              />
             </a>
 
             {/* Login Button */}

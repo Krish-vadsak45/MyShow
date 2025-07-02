@@ -5,7 +5,7 @@ import React from "react";
 
 const MovieTicketUI = ({ booking }) => {
   return (
-    <div className="min-h-screen scale-80 bg-gradient-to-br from-indigo-600 via-purple-600 to-purple-800 p-8 flex items-center justify-center">
+    <div className="min-h-screen scale-80 p-8 flex items-center justify-center">
       <div className="relative bg-white rounded-3xl shadow-2xl overflow-hidden max-w-2xl w-full">
         {/* Decorative circles on sides */}
         <div className="absolute top-1/2 -left-4 w-8 h-8 bg-gradient-to-br from-indigo-600 via-purple-600 to-purple-800 rounded-full transform -translate-y-1/2"></div>

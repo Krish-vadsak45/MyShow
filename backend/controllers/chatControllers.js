@@ -82,7 +82,7 @@ export const geminiChatAboutDatabase = async (req, res) => {
   // ✅ Final Prompt
   const prompt = `
                 You are a helpful assistant for a movie booking website.
-                Answer ONLY based on the following database context. If the answer is not in the data, say: "I don't know."
+                Answer ONLY based on the following database context. If the answer is not in the data, find relative information and try to answer the question. If you are unsure, say "I don't know".
 
                 Database:
                 ${context}
