@@ -53,12 +53,15 @@ export default function ChatBot({ onClose }) {
     setIsLoading(true);
 
     try {
+      console.log("hii");
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: input }),
       });
+      console.log(response);
       const data = await response.json();
+      console.log(data);
       const assistantMessage = {
         id: Date.now() + "-assistant",
         role: "assistant",
@@ -109,7 +112,7 @@ export default function ChatBot({ onClose }) {
           variant="ghost"
           size="sm"
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 h-8 w-8 p-0"
+          className="text-gray-400 hover:text-gray-600 h-8 w-8 p-0 hover:cursor-pointer"
         >
           <X className="w-4 h-4" />
         </Button>

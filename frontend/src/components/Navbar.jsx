@@ -33,7 +33,10 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 w-[13%]">
+          <Link
+            to="/"
+            className="flex items-center space-x-2 w-[30%] md:w-[13%]"
+          >
             <img
               src={assets.logo}
               alt="logo image"
@@ -124,7 +127,7 @@ const Navbar = () => {
 
         {/* Mobile Navigation Menu */}
         <div
-          className={`md:hidden fixed top-0 left-0 h-full w-1/4 max-w-xs z-10 bg-slate-800/90 rounded-r-lg shadow-lg transition-transform duration-300 ease-in-out ${
+          className={`md:hidden fixed top-12 left-0 h-full w-1/4 max-w-xs z-10 bg-slate-800/90 rounded-r-lg shadow-lg transition-transform duration-300 ease-in-out ${
             isMenuOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >

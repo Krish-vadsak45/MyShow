@@ -29,7 +29,7 @@ const HeroSection = () => {
           Guardians <br /> of the Galaxy
         </h1>
         <div className="flex items-center gap-4 text-gray-300">
-          <span>Action | Adventure | Sci-Fi</span>
+          <span className="mt-1.5 md:mt-0">Action | Adventure | Sci-Fi</span>
           <div className="flex items-center gap-1">
             <Calendar1Icon className="w-4.5 h-4.5" />
             2018
@@ -42,7 +42,7 @@ const HeroSection = () => {
         <p className="max-w-md text-gray-300">
           In a post-apocalyptic world where cities ride on wheels and consume
           each other to survive, two people meet in London and try to stop a
-          conspiracy .
+          conspiracy.
         </p>
         <button
           onClick={() => {
@@ -54,7 +54,7 @@ const HeroSection = () => {
           <span className="group-hover:-translate-x-1 transition-transform duration-200">
             Explore Movies
           </span>
-          <span className="inline-block transition-all duration-500 linear group-hover:translate-x-200 group-hover:opacity-0">
+          <span className="inline-block transition-all duration-500 ease-in group-hover:translate-x-200 group-hover:opacity-0">
             <ArrowRight className="w-5 h-5 " />
           </span>
         </button>

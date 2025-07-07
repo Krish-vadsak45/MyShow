@@ -49,7 +49,7 @@ export const getAllShows = async (req, res) => {
     })
       .populate("movie")
       .sort({ showDateTime: 1 });
-    console.log("hello", shows);
+    // console.log("hello", shows);
     res.json({ success: true, shows });
   } catch (error) {
     console.error(error.message);

@@ -7,13 +7,13 @@ import ChatBot from "./ChatBot";
 const ChatBox = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   return (
-    <div>
+    <div className="hidden md:block">
       {/* Floating Chat Button */}
       <div className="fixed bottom-6 right-6 z-50">
         {!isChatOpen && (
           <Button
             onClick={() => setIsChatOpen(true)}
-            className="w-14 h-14 rounded-full bg-blue-500 hover:bg-blue-600 shadow-lg"
+            className="w-14 h-14 rounded-full bg-blue-500 hover:bg-blue-600 shadow-lg hover:cursor-pointer"
           >
             <MessageCircle className="w-6 h-6" />
           </Button>

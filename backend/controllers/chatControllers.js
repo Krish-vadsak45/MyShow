@@ -1,3 +1,267 @@
+// import axios from "axios";
+// import Movie from "../models/movie.model.js";
+// import Show from "../models/show.model.js";
+// import User from "../models/user.model.js";
+// import Booking from "../models/booking.model.js";
+
+// export const geminiChatAboutDatabase = async (req, res) => {
+//   const { message } = req.body;
+//   console.log("User message:", message);
+
+//   let movieResults = [];
+//   let showResults = [];
+//   let userResults = [];
+//   let bookingResults = [];
+
+//   try {
+//     const now = new Date().toISOString();
+//     movieResults = await Movie.find({});
+//     showResults = await Show.find({
+//       showDateTime: { $gte: now },
+//     }).populate("movie");
+//     userResults = await User.find({});
+//     bookingResults = await Booking.find({})
+//       .populate("user")
+//       .populate({
+//         path: "show",
+//         match: { showDateTime: { $gte: now } },
+//         populate: { path: "movie" },
+//       });
+//     bookingResults = bookingResults.filter((b) => b.show);
+//   } catch (err) {
+//     console.error("DB fetch error:", err.message || err);
+//     return res.status(500).json({ reply: "Database fetch error." });
+//   }
+
+//   // ✅ Helper: Safe to-string
+//   const safeString = (val) =>
+//     typeof val === "string" ? val : JSON.stringify(val);
+
+//   // ✅ Build Context
+//   let context = "";
+
+//   if (movieResults.length) {
+//     context += `Movies:\n${movieResults
+//       .map(
+//         (m) =>
+//           `Title: ${m.title}, Genre: ${m.genres}, Rating: ${m.vote_average}`
+//       )
+//       .join("\n")}\n\n`;
+//   }
+
+//   if (showResults.length) {
+//     context += `Shows:\n${showResults
+//       .map((s) => {
+//         const movieTitle = s.movie?.title || "Unknown Movie";
+//         return `Movie: ${movieTitle}, Date: ${s.showDateTime}`;
+//       })
+//       .join("\n")}\n\n`;
+//   }
+
+//   if (userResults.length) {
+//     context += `Users:\n${userResults
+//       .map((u) => `Name: ${u.name}, Email: ${u.email}`)
+//       .join("\n")}\n\n`;
+//   }
+
+//   if (bookingResults.length) {
+//     context += `Bookings:\n${bookingResults
+//       .map((b) => {
+//         const user = b.user?.name || "Unknown User";
+//         const movie = b.show?.movie?.title || "Unknown Movie";
+//         const date = b.show?.showDateTime || "Unknown Date";
+//         return `User: ${user}, Movie: ${movie}, Date: ${date}, Seats: ${b.bookedSeats.join(
+//           ", "
+//         )}`;
+//       })
+//       .join("\n")}\n\n`;
+//   }
+//   // console.log(context);
+//   if (!context.trim()) context = "No relevant data found in the database.";
+
+//   // ✅ Final Prompt
+//   const prompt = `
+//                 You are a helpful assistant for a movie booking website.
+//                 Answer ONLY based on the following database context. If the answer is not in the data, find relative information and try to answer the question. If you are unsure, say "I don't know".
+
+//                 Database:
+//                 ${context}
+
+//                 User asked: "${message}"
+
+//                 Reply:
+//                 `.trim();
+
+//   console.log(prompt);
+
+//   // ✅ Gemini API Call with fallback
+//   try {
+//     const geminiRes = await axios.post(
+//       `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+//       {
+//         contents: [
+//           {
+//             parts: [{ text: prompt }],
+//           },
+//         ],
+//       }
+//     );
+
+//     const reply =
+//       geminiRes.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
+//       "Sorry, I couldn't get a response from Gemini.";
+
+//     res.json({ reply });
+//   } catch (err) {
+//     const status = err.response?.status;
+//     if (status === 503) {
+//       console.warn("Gemini overloaded (503).");
+//       return res.status(503).json({
+//         reply: "Gemini is currently overloaded. Please try again shortly. 🔁",
+//       });
+//     }
+
+//     console.error("Gemini error:", err.response?.data || err.message);
+//     res.status(500).json({ reply: "Something went wrong with Gemini." });
+//   }
+// };
+
+// import axios from "axios";
+// import Movie from "../models/movie.model.js";
+// import Show from "../models/show.model.js";
+// import User from "../models/user.model.js";
+// import Booking from "../models/booking.model.js";
+
+// export const geminiChatAboutDatabase = async (req, res) => {
+//   const { message } = req.body;
+//   // console.log("User message:", message);
+
+//   let movieResults = [];
+//   let showResults = [];
+//   let userResults = [];
+//   let bookingResults = [];
+
+//   try {
+//     const now = new Date().toISOString();
+//     movieResults = await Movie.find({});
+//     showResults = await Show.find({
+//       showDateTime: { $gte: now },
+//     }).populate("movie");
+//     userResults = await User.find({});
+//     bookingResults = await Booking.find({})
+//       .populate("user")
+//       .populate({
+//         path: "show",
+//         match: { showDateTime: { $gte: now } },
+//         populate: { path: "movie" },
+//       });
+//     bookingResults = bookingResults.filter((b) => b.show);
+//   } catch (err) {
+//     console.error("DB fetch error:", err.message || err);
+//     return res.status(500).json({ reply: "Database fetch error." });
+//   }
+
+//   const safeString = (val) =>
+//     typeof val === "string" ? val : JSON.stringify(val);
+
+//   let context = "";
+
+//   if (movieResults.length) {
+//     context += `Movies:\n${movieResults
+//       .map(
+//         (m) =>
+//           `Title: ${m.title}, Genre: ${m.genres.join(",")}, Rating: ${
+//             m.vote_average
+//           }`
+//       )
+//       .join("\n")}\n\n`;
+//   }
+
+//   if (showResults.length) {
+//     context += `Shows:\n${showResults
+//       .map((s) => {
+//         const movieTitle = s.movie?.title || "Unknown Movie";
+//         return `Movie: ${movieTitle}, Date: ${s.showDateTime}`;
+//       })
+//       .join("\n")}\n\n`;
+//   }
+
+//   if (userResults.length) {
+//     context += `Users:\n${userResults
+//       .map((u) => `Name: ${u.name}, Email: ${u.email}`)
+//       .join("\n")}\n\n`;
+//   }
+
+//   if (bookingResults.length) {
+//     context += `Bookings:\n${bookingResults
+//       .map((b) => {
+//         const user = b.user?.name || "Unknown User";
+//         const movie = b.show?.movie?.title || "Unknown Movie";
+//         const date = b.show?.showDateTime || "Unknown Date";
+//         return `User: ${user}, Movie: ${movie}, Date: ${date}, Seats: ${b.bookedSeats.join(
+//           ", "
+//         )}`;
+//       })
+//       .join("\n")}\n\n`;
+//   }
+
+//   if (!context.trim()) context = "No relevant data found in the database.";
+
+//   const prompt = `
+// You are a helpful assistant for a movie booking website.
+// Answer ONLY based on the following database context. If the answer is not in the data, try to search as per your knowledge and try to connect with my database information and respond accordingly. If you're unsure, say \"I don't know\".
+
+// You can answer questions like:
+// - What movies are available?
+// - Suggest me a horror movie
+// - When is my next booking?
+// - What shows are available tonight?
+// - Who are the registered users?
+// - How many seats have I booked for Avatar?
+// - Recommend a good rated movie
+// - What genres are available?
+
+// Database:
+// ${context}
+
+// User asked: "${message}"
+
+// Reply:
+// `.trim();
+
+//   console.log(prompt);
+
+//   try {
+//     const geminiRes = await axios.post(
+//       `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+//       {
+//         contents: [
+//           {
+//             parts: [{ text: prompt }],
+//           },
+//         ],
+//       }
+//     );
+
+//     const reply =
+//       geminiRes.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
+//       "Sorry, I couldn't get a response from Gemini.";
+
+//     res.json({ reply });
+//   } catch (err) {
+//     const status = err.response?.status;
+//     if (status === 503) {
+//       console.warn("Gemini overloaded (503).");
+//       return res.status(503).json({
+//         reply: "Gemini is currently overloaded. Please try again shortly. 🔁",
+//       });
+//     }
+
+//     console.error("Gemini error:", err.response?.data || err.message);
+//     res.status(500).json({ reply: "Something went wrong with Gemini." });
+//   }
+// };
+
 import axios from "axios";
 import Movie from "../models/movie.model.js";
 import Show from "../models/show.model.js";
@@ -6,7 +270,6 @@ import Booking from "../models/booking.model.js";
 
 export const geminiChatAboutDatabase = async (req, res) => {
   const { message } = req.body;
-  console.log("User message:", message);
 
   let movieResults = [];
   let showResults = [];
@@ -15,36 +278,47 @@ export const geminiChatAboutDatabase = async (req, res) => {
 
   try {
     const now = new Date().toISOString();
-    movieResults = await Movie.find({});
-    showResults = await Show.find({
-      showDateTime: { $gte: now },
-    }).populate("movie");
-    userResults = await User.find({});
+
+    // Fetch all movies
+    movieResults = await Movie.find({}).lean();
+
+    // Fetch shows with future datetime, populated with movie details
+    showResults = await Show.find({ showDateTime: { $gte: now } })
+      .populate({ path: "movie", select: "title genres vote_average" })
+      .lean();
+
+    // Fetch users
+    userResults = await User.find({}).select("name email").lean();
+
+    // Fetch bookings with populated user and show (which also populates movie)
     bookingResults = await Booking.find({})
-      .populate("user")
+      .populate("user", "name email")
       .populate({
         path: "show",
         match: { showDateTime: { $gte: now } },
-        populate: { path: "movie" },
-      });
+        populate: { path: "movie", select: "title" },
+      })
+      .lean();
+
+    // Filter out bookings where the show didn't match the $gte filter
     bookingResults = bookingResults.filter((b) => b.show);
   } catch (err) {
     console.error("DB fetch error:", err.message || err);
     return res.status(500).json({ reply: "Database fetch error." });
   }
 
-  // ✅ Helper: Safe to-string
-  const safeString = (val) =>
-    typeof val === "string" ? val : JSON.stringify(val);
-
-  // ✅ Build Context
+  // Build prompt context
   let context = "";
 
   if (movieResults.length) {
     context += `Movies:\n${movieResults
       .map(
         (m) =>
-          `Title: ${m.title}, Genre: ${m.genres}, Rating: ${m.vote_average}`
+          `Title: ${m.title}, Genre: ${
+            Array.isArray(m.genres)
+              ? m.genres.map((g) => g.name).join(", ")
+              : "Unknown"
+          }, Rating: ${m.vote_average}`
       )
       .join("\n")}\n\n`;
   }
@@ -53,7 +327,7 @@ export const geminiChatAboutDatabase = async (req, res) => {
     context += `Shows:\n${showResults
       .map((s) => {
         const movieTitle = s.movie?.title || "Unknown Movie";
-        return `Movie: ${movieTitle}, Date: ${s.showDateTime}`;
+        return `Movie: ${movieTitle}, DateTime: ${s.showDateTime}`;
       })
       .join("\n")}\n\n`;
   }
@@ -70,31 +344,46 @@ export const geminiChatAboutDatabase = async (req, res) => {
         const user = b.user?.name || "Unknown User";
         const movie = b.show?.movie?.title || "Unknown Movie";
         const date = b.show?.showDateTime || "Unknown Date";
-        return `User: ${user}, Movie: ${movie}, Date: ${date}, Seats: ${b.bookedSeats.join(
-          ", "
-        )}`;
+        const seats = Array.isArray(b.bookedSeats)
+          ? b.bookedSeats.join(", ")
+          : "None";
+        return `User: ${user}, Movie: ${movie}, Date: ${date}, Seats: ${seats}`;
       })
       .join("\n")}\n\n`;
   }
-  // console.log(context);
+  console.log(context);
   if (!context.trim()) context = "No relevant data found in the database.";
 
-  // ✅ Final Prompt
+  // Build prompt
   const prompt = `
-                You are a helpful assistant for a movie booking website.
-                Answer ONLY based on the following database context. If the answer is not in the data, find relative information and try to answer the question. If you are unsure, say "I don't know".
+You are a helpful assistant for a movie booking website.
 
-                Database:
-                ${context}
+Answer ONLY using the information in the database context below.
+If the answer is not in the data, try to search as per your knowledge and try to connect with my database information and respond accordingly.
 
-                User asked: "${message}"
+You can answer:
+- What movies are available?
+- Suggest me a horror movie
+- When is my next booking?
+- What shows are available tonight?
+- Who are the registered users?
+- How many seats have I booked for Avatar?
+- Recommend a good rated movie
+- What genres are available?
 
-                Reply:
-                `.trim();
+Database:
+${context}
 
-  console.log(prompt);
+User asked: "${message}"
 
-  // ✅ Gemini API Call with fallback
+Reply:
+`.trim();
+
+  // Debug: log what we're sending to Gemini
+  // console.log("=== Prompt Sent to Gemini ===");
+  // console.log(prompt);
+
+  // Send to Gemini
   try {
     const geminiRes = await axios.post(
       `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
@@ -115,76 +404,140 @@ export const geminiChatAboutDatabase = async (req, res) => {
   } catch (err) {
     const status = err.response?.status;
     if (status === 503) {
-      console.warn("Gemini overloaded (503).");
+      console.warn("Gemini is overloaded (503)");
       return res.status(503).json({
         reply: "Gemini is currently overloaded. Please try again shortly. 🔁",
       });
     }
 
-    console.error("Gemini error:", err.response?.data || err.message);
+    console.error("Gemini API error:", err.response?.data || err.message);
     res.status(500).json({ reply: "Something went wrong with Gemini." });
   }
 };
 
+// import axios from "axios";
+// import Movie from "../models/movie.model.js";
+// import Show from "../models/show.model.js";
+// import User from "../models/user.model.js";
+// import Booking from "../models/booking.model.js";
+
 // export const geminiChatAboutDatabase = async (req, res) => {
 //   const { message } = req.body;
-//   console.log(message);
 
-//   // 1. Search your collections for relevant info
-//   // (You can improve this with semantic search or more advanced logic)
 //   let movieResults = [];
 //   let showResults = [];
 //   let userResults = [];
 //   let bookingResults = [];
 
 //   try {
-//     movieResults = await Movie.find({});
-//     showResults = await Show.find({}).populate("movie");
-//     userResults = await User.find({});
+//     const now = new Date().toISOString();
+
+//     // Fetch users
+//     userResults = await User.find({}).select("name email").lean();
+
+//     // Fetch shows with future datetime and populated movie
+//     showResults = await Show.find({ showDateTime: { $gte: now } })
+//       .populate({ path: "movie", select: "title genres vote_average" })
+//       .lean();
+
+//     // Extract unique movieIds from shows
+//     const movieIdsFromShows = showResults
+//       .map((show) => show.movie?._id)
+//       .filter(Boolean);
+
+//     // Fetch movies that are part of shows
+//     movieResults = await Movie.find({ _id: { $in: movieIdsFromShows } }).lean();
+
+//     // Fetch bookings with populated user and show + show.movie
 //     bookingResults = await Booking.find({})
-//       .populate("user")
-//       .populate({ path: "show", populate: { path: "movie" } });
+//       .populate("user", "name email")
+//       .populate({
+//         path: "show",
+//         match: { showDateTime: { $gte: now } },
+//         populate: { path: "movie", select: "title" },
+//       })
+//       .lean();
+
+//     // Filter out bookings where show is missing
+//     bookingResults = bookingResults.filter((b) => b.show);
 //   } catch (err) {
-//     console.log("DB fetch error:", err.message || err);
-//     return res.status(500).json({ reply: "Database error." });
+//     console.error("DB fetch error:", err.message || err);
+//     return res.status(500).json({ reply: "Database fetch error." });
 //   }
 
-//   // 2. Build a context string for Gemini
+//   // Build prompt context
 //   let context = "";
-//   if (movieResults.length)
+
+//   if (movieResults.length) {
 //     context += `Movies:\n${movieResults
-//       .map((m) => `Title: ${m.title}, Genre: ${m.genre}, Rating: ${m.rating}`)
-//       .join("\n")}\n`;
-//   if (showResults.length)
-//     context += `Shows:\n${showResults
 //       .map(
-//         (s) =>
-//           `Movie: ${s.movie}, Date: ${s.showDateTime}, Theater: ${s.theater}`
+//         (m) =>
+//           `Title: ${m.title}, Genre: ${
+//             Array.isArray(m.genres)
+//               ? m.genres.map((g) => g.name).join(", ")
+//               : "Unknown"
+//           }, Rating: ${m.vote_average}`
 //       )
-//       .join("\n")}\n`;
-//   if (userResults.length)
+//       .join("\n")}\n\n`;
+//   }
+
+//   if (showResults.length) {
+//     context += `Shows:\n${showResults
+//       .map((s) => {
+//         const movieTitle = s.movie?.title || "Unknown Movie";
+//         return `Movie: ${movieTitle}, DateTime: ${s.showDateTime}`;
+//       })
+//       .join("\n")}\n\n`;
+//   }
+
+//   if (userResults.length) {
 //     context += `Users:\n${userResults
 //       .map((u) => `Name: ${u.name}, Email: ${u.email}`)
-//       .join("\n")}\n`;
-//   if (bookingResults.length)
+//       .join("\n")}\n\n`;
+//   }
+
+//   if (bookingResults.length) {
 //     context += `Bookings:\n${bookingResults
-//       .map((b) => `User: ${b.user}, Show: ${b.show}, Seats: ${b.bookedSeats}`)
-//       .join("\n")}\n`;
+//       .map((b) => {
+//         const user = b.user?.name || "Unknown User";
+//         const movie = b.show?.movie?.title || "Unknown Movie";
+//         const date = b.show?.showDateTime || "Unknown Date";
+//         const seats = Array.isArray(b.bookedSeats)
+//           ? b.bookedSeats.join(", ")
+//           : "None";
+//         return `User: ${user}, Movie: ${movie}, Date: ${date}, Seats: ${seats}`;
+//       })
+//       .join("\n")}\n\n`;
+//   }
 
-//   console.log("hii", context);
-//   if (!context) context = "No relevant data found in the database.";
-//   console.log(context);
+//   if (!context.trim()) context = "No relevant data found in the database.";
 
-//   // 3. Compose prompt for Gemini
+//   // Build prompt
 //   const prompt = `
-// You are a helpful assistant. Answer the user's question using ONLY the following database information. If the answer is not in the data, say "I don't know".
+// You are a helpful assistant for a movie booking website.
 
-// Database info:
+// Answer ONLY using the information in the database context below.try to search as per your knowledge and try to connect with my database information and respond accordingly. If you're unsure, say \"I don't know\
+
+// You can answer:
+// - What movies are available?
+// - Suggest me a horror movie
+// - When is my next booking?
+// - What shows are available tonight?
+// - Who are the registered users?
+// - How many seats have I booked for Avatar?
+// - Recommend a good rated movie
+// - What genres are available?
+
+// Database:
 // ${context}
 
-// User question: ${message}
-// Assistant:
-//   `;
+// User asked: "${message}"
+
+// Reply:
+// `.trim();
+
+//   console.log("=== Prompt Sent to Gemini ===");
+//   console.log(prompt);
 
 //   try {
 //     const geminiRes = await axios.post(
@@ -197,13 +550,23 @@ export const geminiChatAboutDatabase = async (req, res) => {
 //         ],
 //       }
 //     );
+
 //     const reply =
-//       geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text ||
-//       "Sorry, I couldn't get a response.";
+//       geminiRes.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
+//       "Sorry, I couldn't get a response from Gemini.";
+
 //     res.json({ reply });
 //   } catch (err) {
-//     console.log("Gemini error:", err.response?.data || err.message || err);
-//     res.status(500).json({ reply: "Sorry, I couldn't get a response." });
+//     const status = err.response?.status;
+//     if (status === 503) {
+//       console.warn("Gemini is overloaded (503)");
+//       return res.status(503).json({
+//         reply: "Gemini is currently overloaded. Please try again shortly. 🔁",
+//       });
+//     }
+
+//     console.error("Gemini API error:", err.response?.data || err.message);
+//     res.status(500).json({ reply: "Something went wrong with Gemini." });
 //   }
 // };
 

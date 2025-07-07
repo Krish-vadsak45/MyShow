@@ -34,9 +34,12 @@ const AddShows = () => {
   };
 
   const handleDateTimeAdd = () => {
-    if (!dateTimeInput) return;
+    if (!dateTimeInput || Object.keys(dateTimeInput).length === 0) {
+      return toast.error("Please select a date and time");
+    }
+    console.log(dateTimeInput);
     const [date, time] = dateTimeInput.split("T");
-    if (!date || !time) return;
+    if (!date || !time) return toast.error("Please select a date and time");
 
     setDateTimeSelection((prev) => {
       const times = prev[date] || [];

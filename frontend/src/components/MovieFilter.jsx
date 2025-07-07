@@ -369,7 +369,7 @@ const MovieFilter = () => {
         </div>
 
         {/* Movie Grid */}
-        <div className="flex flex-wrap  gap-8">
+        <div className="flex flex-col items-center md:flex-row  gap-8">
           {filteredMovies.map((movie) => (
             <MovieCard movie={movie} key={movie._id} />
           ))}

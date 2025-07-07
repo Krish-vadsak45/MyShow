@@ -22,7 +22,7 @@ const TrailerSection = () => {
           className="mt-auto max-w-full"
         />
       </div>
-      <div className="group grid grid-cols-4 gap-4 md:gap-8 mt-8 max-w-3xl mx-auto">
+      <div className="group grid md:grid-cols-4 gap-4 md:gap-8 mt-8 max-w-3xl mx-auto">
         {dummyTrailers.map((trailer) => (
           <div
             key={trailer.image}

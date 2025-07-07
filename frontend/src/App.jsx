@@ -19,6 +19,7 @@ import { SignIn } from "@clerk/clerk-react";
 import Loading from "./components/Loading";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AboutUs from "./pages/AboutUs";
+import ChatBox from "./components/ChatBox";
 
 function App() {
   const isAdminRoute = useLocation().pathname.startsWith("/admin");
@@ -57,6 +58,7 @@ function App() {
         </Route>
         <Route path="*" element={<div>Page Not Found</div>} />
       </Routes>
+      {user && !isAdminRoute && <ChatBox />}
       {!isAdminRoute && <Footer />}
     </>
   );
