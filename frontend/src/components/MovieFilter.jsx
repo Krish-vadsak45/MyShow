@@ -11,14 +11,7 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
-import {
-  Search,
-  Filter,
-  Star,
-  CalendarIcon,
-  ChevronDown,
-  X,
-} from "lucide-react";
+import { Search, Filter, CalendarIcon, ChevronDown, X } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 import MovieCard from "./MovieCard";
 
@@ -43,7 +36,6 @@ const languageMap = {
   Spanish: "es",
   French: "fr",
   German: "de",
-  // add more as needed
 };
 
 const MovieFilter = () => {
@@ -79,7 +71,7 @@ const MovieFilter = () => {
   // Filter movies based on all criteria
   const filteredMovies = useMemo(() => {
     return shows.filter((movie) => {
-      console.log(movie);
+      // console.log(movie);
       // Fuzzy search on title
       if (!fuzzySearch(movie.title, searchTerm)) return false;
 
@@ -184,7 +176,7 @@ const MovieFilter = () => {
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
+                    className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700 hover:text-white cursor-pointer"
                   >
                     Genre{" "}
                     {selectedGenres.length > 0 && `(${selectedGenres.length})`}
@@ -222,7 +214,7 @@ const MovieFilter = () => {
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
+                    className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700 hover:text-white cursor-pointer"
                   >
                     Language{" "}
                     {selectedLanguages.length > 0 &&
@@ -264,7 +256,7 @@ const MovieFilter = () => {
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
+                    className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700 hover:text-white cursor-pointer"
                   >
                     <CalendarIcon className="w-4 h-4 mr-2" />
                     {dateFrom ? format(dateFrom, "MMM dd, yyyy") : "From Date"}
@@ -286,7 +278,7 @@ const MovieFilter = () => {
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
+                    className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700 hover:text-white cursor-pointer"
                   >
                     <CalendarIcon className="w-4 h-4 mr-2" />
                     {dateTo ? format(dateTo, "MMM dd, yyyy") : "To Date"}
@@ -308,7 +300,7 @@ const MovieFilter = () => {
                 <Button
                   variant="ghost"
                   onClick={clearAllFilters}
-                  className="text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                  className="text-red-400 hover:text-red-300 hover:bg-red-400/10 cursor-pointer"
                 >
                   <X className="w-4 h-4 mr-2" />
                   Clear All
@@ -385,7 +377,7 @@ const MovieFilter = () => {
             <Button
               onClick={clearAllFilters}
               variant="outline"
-              className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
+              className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700 hover:text-white cursor-pointer"
             >
               Clear All Filters
             </Button>

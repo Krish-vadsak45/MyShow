@@ -52,6 +52,7 @@ export const AppProvider = ({ children }) => {
   };
   const fetchRecommendations = async () => {
     try {
+      if (!user) return;
       const token = await getToken();
       const { data } = await axios.get("/api/recommendation/personalized", {
         headers: { Authorization: `Bearer ${token}` },

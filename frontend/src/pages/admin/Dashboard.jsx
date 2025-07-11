@@ -68,7 +68,6 @@ const Dashboard = () => {
       console.error(error);
       toast.error("Error fetching dashboard data: ", error);
     }
-    // setDashboardData(dummyDashboardData);
   };
 
   useEffect(() => {
@@ -78,7 +77,7 @@ const Dashboard = () => {
   }, [user]);
 
   return !loading ? (
-    <>
+    <div className="ml-10 md:ml-0">
       <Title text1="Admin" text2="Dashboard" />
 
       <div className="relative flex flex-wrap gap-4 mt-6">
@@ -105,7 +104,7 @@ const Dashboard = () => {
         <BlurCircle top="100px" left="-10%" />
         {dashboardData.activeShows.map((show) => (
           <div
-            key={show.id}
+            key={show._id}
             className="w-55 rounded-lg overflow-hidden
             h-full pb-3 bg-primary/10 border border-primary/20
             hover :- translate-y-1 transition duration-300"
@@ -138,7 +137,7 @@ const Dashboard = () => {
           </div>
         ))}
       </div>
-    </>
+    </div>
   ) : (
     <Loading />
   );

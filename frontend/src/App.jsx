@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import Navbar from "./components/Navbar";
 import { Route, Routes, useLocation } from "react-router-dom";
 import Home from "./pages/Home";
@@ -20,6 +19,7 @@ import Loading from "./components/Loading";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AboutUs from "./pages/AboutUs";
 import ChatBox from "./components/ChatBox";
+import ToastLimiter from "./components/ToastLimiter";
 
 function App() {
   const isAdminRoute = useLocation().pathname.startsWith("/admin");
@@ -27,7 +27,8 @@ function App() {
 
   return (
     <>
-      <Toaster />
+      {/* <Toaster limit={4} /> */}
+      <ToastLimiter limit={4} position="top-right" />
       {!isAdminRoute && <Navbar />}
       <Routes>
         <Route path="/" element={<Home />} />

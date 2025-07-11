@@ -1,6 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import Loading from "../../components/Loading";
-import { CheckIcon, DeleteIcon, StarIcon } from "lucide-react";
+import {
+  CheckIcon,
+  DeleteIcon,
+  StarIcon,
+  ChevronLeft,
+  ChevronRight,
+  Star,
+  Check,
+} from "lucide-react";
 import { kConverter } from "../../lib/kConverter";
 import { useAppContext } from "../../context/AppContext.jsx";
 import toast from "react-hot-toast";
@@ -17,6 +25,15 @@ const AddShows = () => {
   const [showPrice, setShowPrice] = useState("");
   const [addingShow, setAddingShow] = useState(false);
 
+  // const [showLeftArrow, setShowLeftArrow] = useState(false);
+  // const [showRightArrow, setShowRightArrow] = useState(true);
+  // const scrollContainerRef = useRef(null);
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const scrollContainerRef = useRef(null);
+  const scrollTimeoutRef = useRef();
+
   const fetchNowPlayongMovies = async () => {
     try {
       const { data } = await axios.get("/api/show/now-playing", {
@@ -30,14 +47,13 @@ const AddShows = () => {
     } catch (error) {
       console.log(error);
     }
-    // setNowPlayingmovies(dummyShowsData);
   };
 
   const handleDateTimeAdd = () => {
     if (!dateTimeInput || Object.keys(dateTimeInput).length === 0) {
       return toast.error("Please select a date and time");
     }
-    console.log(dateTimeInput);
+    // console.log(dateTimeInput);
     const [date, time] = dateTimeInput.split("T");
     if (!date || !time) return toast.error("Please select a date and time");
 
@@ -67,12 +83,18 @@ const AddShows = () => {
   const handleSubmit = async () => {
     try {
       setAddingShow(true);
-      if (
-        !selectedMovie ||
-        Object.keys(dateTimeSelection).length === 0 ||
-        !showPrice
-      ) {
-        return toast("Missing required fields");
+      if (!selectedMovie) {
+        setAddingShow(false);
+        return toast.error("Please select a movie");
+      }
+      if (isNaN(showPrice) || Number(showPrice) <= 0) {
+        setAddingShow(false);
+        return toast.error("Please enter a valid show price");
+      }
+
+      if (!dateTimeInput || Object.keys(dateTimeInput).length === 0) {
+        setAddingShow(false);
+        return toast.error("Please select a date and time");
       }
       const showInput = Object.entries(dateTimeSelection).map(
         ([date, time]) => ({ date, time })
@@ -99,8 +121,9 @@ const AddShows = () => {
     } catch (error) {
       console.error("Submission error:", error);
       toast.error("An error occurred. Please try again.");
+    } finally {
+      setAddingShow(false);
     }
-    setAddingShow(false);
   };
 
   useEffect(() => {
@@ -109,17 +132,127 @@ const AddShows = () => {
     }
   }, [user]);
 
+  const checkScrollPosition = useCallback(() => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } =
+        scrollContainerRef.current;
+      setShowLeftArrow(scrollLeft > 5); // Small threshold to account for rounding
+      setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 5);
+    }
+  }, []);
+
+  const smoothScroll = useCallback(
+    (direction) => {
+      if (scrollContainerRef.current) {
+        // Clear any existing timeout
+        if (scrollTimeoutRef.current) {
+          clearTimeout(scrollTimeoutRef.current);
+        }
+
+        const container = scrollContainerRef.current;
+        const scrollAmount = isMobile ? 160 : 280; // Optimized scroll amounts
+        const targetScroll =
+          direction === "left"
+            ? container.scrollLeft - scrollAmount
+            : container.scrollLeft + scrollAmount;
+
+        // Use requestAnimationFrame for smoother animation
+        container.scrollTo({
+          left: targetScroll,
+          behavior: "smooth",
+        });
+
+        // Check scroll position after animation completes
+        scrollTimeoutRef.current = setTimeout(checkScrollPosition, 300);
+      }
+    },
+    [isMobile, checkScrollPosition]
+  );
+
+  const scrollLeft = useCallback(() => smoothScroll("left"), [smoothScroll]);
+  const scrollRight = useCallback(() => smoothScroll("right"), [smoothScroll]);
+
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  useEffect(() => {
+    checkScrollPosition();
+    const handleResize = () => {
+      setTimeout(checkScrollPosition, 100); // Debounce resize
+    };
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, [checkScrollPosition]);
+
   return nowPlayingMovies.length > 0 ? (
     <>
       <Title text1="Add" text2="Shows" />
       <p className="mt-10 text-lg font-medium">Now Playing Movies</p>
-      <div className="overflow-x-auto pb-4 no-scrollbar">
-        <div className="group flex flex-wrap gap-4 mt-4 w-max">
+      <div
+        ref={scrollContainerRef}
+        onScroll={checkScrollPosition}
+        // className="flex gap-3 md:gap-4 overflow-x-auto scrollbar-hide pb-4"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        className="relative group overflow-x-auto pb-4 no-scrollbar"
+      >
+        {/* Left Arrow - Always visible on mobile, hover on desktop */}
+        {showLeftArrow && (
+          <button
+            onClick={scrollLeft}
+            className={`fixed left-18 top-85 md:left-72 -translate-y-1/2 z-20 bg-black/80 hover:bg-black/95 text-white p-1.5 md:p-2 rounded-full transition-all duration-200 shadow-lg backdrop-blur-sm
+              ${isMobile ? "opacity-90" : "opacity-0 group-hover:opacity-100"}
+            `}
+            aria-label="Scroll left"
+          >
+            <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
+          </button>
+        )}
+
+        {/* Right Arrow - Always visible on mobile, hover on desktop */}
+        {showRightArrow && (
+          <button
+            onClick={scrollRight}
+            className={`fixed right-5 top-85 md:right-13 -translate-y-1/2 z-20 bg-black/80 hover:bg-black/95 text-white p-1.5 md:p-2 rounded-full transition-all duration-200 shadow-lg backdrop-blur-sm
+              ${isMobile ? "opacity-90" : "opacity-0 group-hover:opacity-100"}
+            `}
+            aria-label="Scroll right"
+          >
+            <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
+          </button>
+        )}
+
+        <div
+          ref={scrollContainerRef}
+          onScroll={checkScrollPosition}
+          style={{
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+            WebkitOverflowScrolling: "touch",
+          }}
+          className="flex gap-3 md:gap-4 mt-4 w-max overflow-x-auto scroll-smooth"
+        >
           {nowPlayingMovies.map((movie) => (
             <div
-              onClick={() => setSelectedMovie(movie.id)}
               key={movie.id}
-              className={`relative max-w-40 cursor-pointer group-hover:not-hover:opacity-40 hover:translate-y-1 transition duration-300`}
+              onClick={() =>
+                setSelectedMovie((prev) =>
+                  prev === movie.id ? null : movie.id
+                )
+              }
+              className={`relative max-w-40 flex-shrink-0 cursor-pointer group-hover:not-hover:opacity-40 hover:translate-y-1 transition duration-300`}
             >
               <div className="relative rounded-lg overflow-hidden">
                 <img

@@ -2,8 +2,10 @@ import HeroSection from "../components/HeroSection.jsx";
 import FeaturedSection from "../components/FeaturedSection.jsx";
 import TrailerSection from "../components/TrailerSection.jsx";
 import RecommendedForYou from "@/components/RecommendedForYou.jsx";
+import { useNavigate } from "react-router-dom";
 
 const Home = () => {
+  const navigate = useNavigate();
   return (
     <>
       {/* Hero Section */}

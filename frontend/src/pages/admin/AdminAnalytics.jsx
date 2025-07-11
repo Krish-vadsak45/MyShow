@@ -42,7 +42,7 @@ const AdminAnalytics = () => {
             Authorization: `Bearer ${token}`,
           },
         });
-        console.log(res.data);
+        // console.log(res.data);
         setAnalytics(res.data);
         setLoading(false);
       } catch (err) {
