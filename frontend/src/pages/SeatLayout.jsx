@@ -92,7 +92,6 @@ const SeatLayout = () => {
 
   const bookTickets = async () => {
     try {
-      console.log("hii");
       if (!user) {
         return toast.error("Please login to proceed");
       }
@@ -139,7 +138,7 @@ const SeatLayout = () => {
       {/* Available Timings */}
       <div
         className="w-60 bg-primary/10 border border-primary/20 rounded-1g py-10
-        h-max md: sticky md: top-30"
+        h-max md:sticky md: top-30"
       >
         <p className="text-lg font-semibold px-6">Available Timings</p>
         <div className="mt-5 space-y-1">

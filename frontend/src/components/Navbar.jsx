@@ -29,7 +29,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-transparent fixed top-0 left-0 w-full z-50">
+    <nav className="bg-transparent fixed top-0 left-0 w-[100vw] z-50">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -127,7 +127,7 @@ const Navbar = () => {
 
         {/* Mobile Navigation Menu */}
         <div
-          className={`md:hidden fixed top-12 left-0 h-full w-1/4 max-w-xs z-10 bg-slate-800/90 rounded-r-lg shadow-lg transition-transform duration-300 ease-in-out ${
+          className={`md:hidden fixed top-15 left-0 w-1/4 max-w-xs z-10 bg-slate-800/90 rounded-r-lg shadow-lg transition-transform duration-300 ease-in-out ${
             isMenuOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >

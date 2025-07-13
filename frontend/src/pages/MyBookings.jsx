@@ -7,7 +7,7 @@ import { useAppContext } from "../context/AppContext";
 import { Link, useNavigate } from "react-router-dom";
 import MovieTicket from "../components/MovieTicket";
 import NotExist from "../components/NotExist";
-import { Calendar } from "lucide-react";
+import { Calendar, Eye } from "lucide-react";
 import MovieTicketUi from "../components/MovieTicketUi";
 
 const MyBookings = () => {
@@ -27,7 +27,7 @@ const MyBookings = () => {
         },
       });
       if (data.success) {
-        console.log(data.bookings);
+        // console.log(data.bookings);
         setBookings(data.bookings);
       }
     } catch (error) {
@@ -57,7 +57,7 @@ const MyBookings = () => {
   }
 
   return !isloading && bookings.length !== 0 ? (
-    <div className="relative px-6 md:px-16 lg:px-40 pt-30 md:pt-40 min-h-[80vh]">
+    <div className="relative px-6 md:px-16 lg:px-40 pt-30 md:pt-40 w-full min-h-[80vh]">
       <BlurCircle top="100px" left="100px" />
       <div>
         <BlurCircle bottom="0px" left="600px" />
@@ -73,7 +73,7 @@ const MyBookings = () => {
             <img
               src={image_base_url + item.show.movie.poster_path}
               alt=""
-              className="md: max-w-45
+              className="md:max-w-45
         aspect-video h-auto object-cover object-bottom rounded"
             />
             <div className="flex flex-col p-4">
@@ -119,8 +119,9 @@ p-4"
                 {item.isPaid && (
                   <button
                     onClick={() => handleViewTicket(item)}
-                    className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-4 mt-3 py-2 rounded-full font-medium transition-all duration-300 transform hover:scale-105 text-sm cursor-pointer"
+                    className="bg-gradient-to-r flex justify-center items-center md:gap-2 from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white px-4 mt-3 py-2 rounded-full font-medium transition-all duration-300 transform hover:scale-105 text-sm cursor-pointer"
                   >
+                    <Eye className="w-4 h-4" />
                     View Ticket
                   </button>
                 )}
@@ -131,10 +132,10 @@ p-4"
         </div>
       ))}
       {selectedBooking && (
-        <div className="fixed min-h-screen inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-sm ">
+        <div className="fixed h-screen w-screen inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-sm ">
           <button
             onClick={() => setSelectedBooking(null)}
-            className="fixed top-20 left-70 z-50 bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-full hover:bg-white/30 transition-all cursor-pointer group flex items-center"
+            className="fixed top-7 md:top-20 left-55 md:left-70 z-50 bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-full hover:bg-white/30 transition-all cursor-pointer group flex items-center"
           >
             <span className="inline-block transition-all ease-in duration-300 group-hover:-translate-x-80">
               ←

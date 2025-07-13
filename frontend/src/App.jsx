@@ -27,7 +27,6 @@ function App() {
 
   return (
     <>
-      {/* <Toaster limit={4} /> */}
       <ToastLimiter limit={4} position="top-right" />
       {!isAdminRoute && <Navbar />}
       <Routes>

@@ -141,7 +141,7 @@ const MovieDetail = () => {
           </div>
         </div>
 
-        <p className="mt-5">Your Favourite Cast</p>
+        <p className="mt-10">Your Favourite Cast</p>
         <div className="overflow-x-auto no-scrollbar mt-8 pb-4">
           <div className="flex items-center gap-4 w-max px-4">
             {getUniqueBy(
@@ -199,7 +199,7 @@ const MovieDetail = () => {
             navigate("/movies");
             scrollTo(0, 0);
           }}
-          className="flex justify-center mt-20"
+          className="flex justify-center mt-20 mb-10 lg:mb-20"
         >
           <button className="px-10 py-3 text-sm bg-primary hover:bg-primary-dull transition rounded-md font-medium cursor-pointer">
             Show More
@@ -207,11 +207,11 @@ const MovieDetail = () => {
         </div>
       </div>
       {showTrailer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur scale-140">
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur scale-90 md:scale-140">
           <div className="relative w-full max-w-3xl">
             <button
               onClick={() => setShowTrailer(false)}
-              className="absolute -top-10 -right-20 bg-white/80 rounded-full px-3 py-1 text-black font-bold cursor-pointer"
+              className="absolute -top-10 -right-4 md:-right-20 bg-white/80 rounded-full px-3 py-1 text-black font-bold cursor-pointer"
             >
               ✕
             </button>

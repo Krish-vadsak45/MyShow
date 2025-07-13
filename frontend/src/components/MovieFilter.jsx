@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -14,12 +14,14 @@ import { format } from "date-fns";
 import { Search, Filter, CalendarIcon, ChevronDown, X } from "lucide-react";
 import { useAppContext } from "@/context/AppContext";
 import MovieCard from "./MovieCard";
+import { useLocation } from "react-router-dom";
 
 // Sample movie data
 const allGenres = [
   "Action",
   "Adventure",
   "Horror",
+  "Comedy",
   "Mystery",
   "Thriller",
   "Fantasy",
@@ -48,6 +50,15 @@ const MovieFilter = () => {
 
   const { shows } = useAppContext();
 
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const genreParam = params.get("genre");
+    if (genreParam && allGenres.includes(genreParam)) {
+      setSelectedGenres([genreParam]);
+    }
+  }, [location.search]);
   // Fuzzy search function
   const fuzzySearch = (text, searchTerm) => {
     if (!searchTerm) return true;
@@ -116,7 +127,6 @@ const MovieFilter = () => {
   };
 
   const handleLanguageChange = (language, checked) => {
-    // console.log("Removing:", language, checked);
     if (checked) {
       setSelectedLanguages([...selectedLanguages, language]);
     } else {

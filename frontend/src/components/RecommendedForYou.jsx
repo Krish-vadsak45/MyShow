@@ -2,12 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useAppContext } from "../context/AppContext";
 import MovieCard from "./MovieCard";
 import BlurCircle from "./BlurCircle";
-import { ArrowRight } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 const RecommendedForYou = () => {
   const { recommendationShows } = useAppContext();
-  const navigate = useNavigate();
 
   if (!recommendationShows.length) return null;
 

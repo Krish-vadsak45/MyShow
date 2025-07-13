@@ -1,7 +1,5 @@
 import logo from "./image.png";
 import marvelLogo from "./marvelLogo.svg";
-import googlePlay from "./googlePlay.svg";
-import appStore from "./appStore.svg";
 import screenImage from "./screenImage.svg";
 import profile from "./profile.png";
 import Ourstory from "./Our-Story.png";
@@ -10,8 +8,6 @@ import Ourstory2 from "./Our-Story2.jpg";
 export const assets = {
   logo,
   marvelLogo,
-  googlePlay,
-  appStore,
   screenImage,
   profile,
   Ourstory,
