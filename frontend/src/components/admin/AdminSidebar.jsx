@@ -26,6 +26,11 @@ const AdminSidebar = () => {
       path: "/admin/listbookings",
       icon: ListCollapseIcon,
     },
+    {
+      name: "Notify Movies",
+      path: "/admin/notify-movies",
+      icon: ListIcon,
+    },
   ];
 
   return (

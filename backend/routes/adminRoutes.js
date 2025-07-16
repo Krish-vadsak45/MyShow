@@ -5,6 +5,7 @@ import {
   getAllShows,
   getDashboardData,
   isAdmin,
+  getNotifyMovies,
 } from "../controllers/adminControllers.js";
 import { getAdminAnalytics } from "../controllers/adminAnalytics.js";
 
@@ -14,6 +15,7 @@ adminRouter.get("/is-admin", protectAdmin, isAdmin);
 adminRouter.get("/dashboard", protectAdmin, getDashboardData);
 adminRouter.get("/all-shows", protectAdmin, getAllShows);
 adminRouter.get("/all-bookings", protectAdmin, getAllBookings);
+adminRouter.get("/notify-movies", protectAdmin, getNotifyMovies);
 
 // Add this route (protect with admin middleware if needed)
 adminRouter.get("/analytics", protectAdmin, getAdminAnalytics);

@@ -19,6 +19,8 @@ import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AboutUs from "./pages/AboutUs";
 import ChatBox from "./components/ChatBox";
 import ToastLimiter from "./components/ToastLimiter";
+import Upcoming from "./pages/Upcoming";
+import ListNotifyMovies from "./pages/admin/ListNotifyMovies";
 
 function App() {
   const isAdminRoute = useLocation().pathname.startsWith("/admin");
@@ -33,6 +35,7 @@ function App() {
         <Route path="/movies" element={<Movies />} />
         <Route path="/movies/:id" element={<MovieDetail />} />
         <Route path="/movies/:id/:date" element={<SeatLayout />} />
+        <Route path="/upcoming" element={<Upcoming />} />
         <Route path="/mybookings" element={<MyBookings />} />
         <Route path="/loading/:nextUrl" element={<Loading />} />
         <Route path="/favourite" element={<Favourite />} />
@@ -54,6 +57,7 @@ function App() {
           <Route path="listshows" element={<ListShows />} />
           <Route path="listbookings" element={<ListBookings />} />
           <Route path="analytics" element={<AdminAnalytics />} />
+          <Route path="notify-movies" element={<ListNotifyMovies />} />
         </Route>
         <Route path="*" element={<div>Page Not Found</div>} />
       </Routes>

@@ -19,15 +19,13 @@ const AddShows = () => {
 
   const currency = import.meta.env.VITE_CURRENCY;
   const [nowPlayingMovies, setNowPlayingmovies] = useState([]);
+  const [notifyCounts, setNotifyCounts] = useState({});
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [dateTimeSelection, setDateTimeSelection] = useState({});
   const [dateTimeInput, setDateTimeInput] = useState({});
   const [showPrice, setShowPrice] = useState("");
   const [addingShow, setAddingShow] = useState(false);
 
-  // const [showLeftArrow, setShowLeftArrow] = useState(false);
-  // const [showRightArrow, setShowRightArrow] = useState(true);
-  // const scrollContainerRef = useRef(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
@@ -43,9 +41,34 @@ const AddShows = () => {
       });
       if (data.success) {
         setNowPlayingmovies(data.movies);
+        fetchNotifyCounts(data.movies);
       }
     } catch (error) {
       console.log(error);
+    }
+  };
+
+  const fetchNotifyCounts = async (movies) => {
+    try {
+      const tmdbIds = movies.map((movie) => movie.id);
+      const { data } = await axios.post(
+        "/api/show/notify-count",
+        { tmdbIds },
+        {
+          headers: {
+            Authorization: `Bearer ${await getToken()}`,
+          },
+        }
+      );
+      if (data.success) {
+        const counts = {};
+        data.notifyCounts.forEach(({ tmdbId, notifyCount }) => {
+          counts[tmdbId] = notifyCount;
+        });
+        setNotifyCounts(counts);
+      }
+    } catch (error) {
+      console.log("Error fetching notify counts:", error);
     }
   };
 
@@ -269,6 +292,14 @@ const AddShows = () => {
                     {kConverter(movie.vote_count)} Votes
                   </p>
                 </div>
+                {notifyCounts[movie.id] > 0 && (
+                  <button
+                    className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded"
+                    title={`${notifyCounts[movie.id] || 0} users notified`}
+                  >
+                    {notifyCounts[movie.id] || 0} Notified
+                  </button>
+                )}
               </div>
               {selectedMovie === movie.id && (
                 <div className="absolute top-2 right-2 flex items-center justify-center bg-primary h-6 w-6 rounded">

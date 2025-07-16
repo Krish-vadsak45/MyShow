@@ -24,7 +24,7 @@ export const protectAdmin = async (req, res, next) => {
 export const auth = async (req, res, next) => {
   try {
     const { userId } = await req.auth();
-    // console.log(userId);
+    // console.log("loda", userId);
     if (!userId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }

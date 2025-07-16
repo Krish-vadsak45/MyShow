@@ -1,6 +1,7 @@
 import axios from "axios";
 import Movie from "../models/movie.model.js";
 import Show from "../models/show.model.js";
+import UpcomingMovie from "../models/upcomingMovie.model.js";
 import { inngest } from "../inngest/index.js";
 
 // API to get now playing movies from TMDB API
@@ -20,6 +21,29 @@ export const getNowPlayingMovies = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: error.message });
+  }
+};
+
+// API to get notify count for a list of movie tmdbIds
+export const getNotifyCount = async (req, res) => {
+  try {
+    const { tmdbIds } = req.body;
+    if (!Array.isArray(tmdbIds)) {
+      return res.status(400).json({ success: false, message: "tmdbIds must be an array" });
+    }
+
+    const notifyCounts = await Promise.all(
+      tmdbIds.map(async (id) => {
+        const upcomingMovie = await UpcomingMovie.findOne({ tmdbId: id });
+        const count = upcomingMovie ? upcomingMovie.notifyUsers.length : 0;
+        return { tmdbId: id, notifyCount: count };
+      })
+    );
+
+    res.json({ success: true, notifyCounts });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 

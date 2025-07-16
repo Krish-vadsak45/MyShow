@@ -1,10 +1,10 @@
 import Booking from "../models/booking.model.js";
 import Show from "../models/show.model.js";
 import User from "../models/user.model.js";
+import UpcomingMovie from "../models/upcomingMovie.model.js";
 
 // API to check if a user is a admin
 export const isAdmin = (req, res) => {
-  // console.log(isAdmin);
   res.json({ success: true, isAdmin: true });
 };
 
@@ -13,16 +13,9 @@ export const getDashboardData = async (req, res) => {
   try {
     const bookings = await Booking.find({ isPaid: true });
     const now = new Date().toISOString();
-    // console.log("Server time (UTC):", now.toISOString());
     const activeShows = await Show.find({
       showDateTime: { $gte: now },
     }).populate("movie");
-
-    // console.log("active ;", activeShows);
-    // console.log("Server time (UTC):", new Date().toISOString());
-    // activeShows.forEach((show) => {
-    //   console.log("Show (UTC):", show.showDateTime.toISOString());
-    // });
 
     const totalUser = await User.countDocuments();
 
@@ -49,7 +42,6 @@ export const getAllShows = async (req, res) => {
     })
       .populate("movie")
       .sort({ showDateTime: 1 });
-    // console.log("hello", shows);
     res.json({ success: true, shows });
   } catch (error) {
     console.error(error.message);
@@ -65,6 +57,21 @@ export const getAllBookings = async (req, res) => {
       .populate({ path: "show", populate: { path: "movie" } })
       .sort({ createdAt: -1 });
     res.json({ success: true, bookings });
+  } catch (error) {
+    console.error(error.message);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// API to get movies with notifyCount > 0
+export const getNotifyMovies = async (req, res) => {
+  try {
+    const today = new Date();
+    const movies = await UpcomingMovie.find({
+      notifyUsers: { $exists: true, $not: { $size: 0 } },
+      releaseDate: { $gte: today },
+    });
+    res.json({ success: true, movies });
   } catch (error) {
     console.error(error.message);
     res.json({ success: false, message: error.message });
