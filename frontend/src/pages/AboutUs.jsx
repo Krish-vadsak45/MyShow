@@ -24,11 +24,38 @@ import StateSection from "@/components/StateSection";
 import { ContactForm } from "@/components/ContactForm";
 import { ReportForm } from "@/components/ReportForm";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 
 const AboutUs = () => {
   const [openFaq, setOpenFaq] = useState(null);
   const [activeTab, setActiveTab] = useState("contact");
+
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get("tab");
+    if (tab === "contact" || tab === "report") {
+      setActiveTab(tab);
+      // Scroll to contact/report section
+      const section = document.getElementById("contact/report");
+      if (section) {
+        section.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+  }, [location.search]);
+
+  useEffect(() => {
+    if (location.hash) {
+      const id = location.hash.replace("#", "");
+      const element = document.getElementById(id);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+  }, [location.hash]);
 
   const faqs = [
     {
@@ -130,29 +157,6 @@ const AboutUs = () => {
 
   return (
     <div className="text-white">
-      {/* Hero Section */}
-      {/* <section className="relative py-20 px-4 sm:px-6 lg:px-8">
-        <div className="absolute inset-0 "></div>
-        <div className="relative max-w-7xl mx-auto text-center">
-          <BlurCircle top="150px" left="0px" />
-          <BlurCircle bottom="150px" right="0px" />
-          <div className="flex items-center justify-center  mb-6">
-            <img
-              src="favicone.png"
-              alt="logo image"
-              className="scale-50"
-              loading="lazy"
-            />
-            <h1 className="text-4xl md:text-6xl font-bold">MyShows</h1>
-          </div>
-          <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
-            Your premier destination for movie tickets and unforgettable cinema
-            experiences. We're revolutionizing how you discover, book, and enjoy
-            movies.
-          </p>
-        </div>
-      </section> */}
-
       {/* Our Story Section */}
       <section id="ourstory" className="py-20 px-4 sm:px-6 lg:px-8 relative">
         <BlurCircle top="20%" right="10%" size="400px" opacity="0.06" />
@@ -324,7 +328,7 @@ const AboutUs = () => {
       </section>
 
       {/* FAQ Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 relative">
+      <section id="faq" className="py-20 px-4 sm:px-6 lg:px-8 relative">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-red-400 to-blue-400 bg-clip-text text-transparent">
@@ -424,7 +428,7 @@ const AboutUs = () => {
       </section>
 
       {/* Contact Section */}
-      <div className="text-center mb-16">
+      <div id="contact/report" className="text-center mb-16">
         <div className="inline-flex items-center bg-red-500/10 rounded-full px-4 py-2 mb-6">
           <MessageSquare className="w-4 h-4 text-red-400 mr-2" />
           <span className="text-red-400 font-medium">Get In Touch</span>

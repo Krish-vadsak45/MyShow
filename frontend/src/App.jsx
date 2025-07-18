@@ -21,6 +21,7 @@ import ChatBox from "./components/ChatBox";
 import ToastLimiter from "./components/ToastLimiter";
 import Upcoming from "./pages/Upcoming";
 import ListNotifyMovies from "./pages/admin/ListNotifyMovies";
+import NotFound from "./components/NotFound";
 
 function App() {
   const isAdminRoute = useLocation().pathname.startsWith("/admin");
@@ -28,7 +29,7 @@ function App() {
 
   return (
     <>
-      <ToastLimiter limit={4} position="top-right" />
+      <ToastLimiter limit={4} position="top-center" />
       {!isAdminRoute && <Navbar />}
       <Routes>
         <Route path="/" element={<Home />} />
@@ -59,7 +60,7 @@ function App() {
           <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="notify-movies" element={<ListNotifyMovies />} />
         </Route>
-        <Route path="*" element={<div>Page Not Found</div>} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
       {user && !isAdminRoute && <ChatBox />}
       {!isAdminRoute && <Footer />}

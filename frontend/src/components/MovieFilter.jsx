@@ -193,7 +193,7 @@ const MovieFilter = () => {
                     <ChevronDown className="w-4 h-4 ml-2" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-64 bg-gray-800 border-gray-700">
+                <PopoverContent className="w-40 bg-gray-800 border-gray-700">
                   <div className="space-y-2">
                     <h4 className="font-medium text-white mb-3">
                       Select Genres
@@ -232,7 +232,7 @@ const MovieFilter = () => {
                     <ChevronDown className="w-4 h-4 ml-2" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-64 bg-gray-800 border-gray-700">
+                <PopoverContent className="w-40 bg-gray-800 border-gray-700">
                   <div className="space-y-2">
                     <h4 className="font-medium text-white mb-3">
                       Select Languages

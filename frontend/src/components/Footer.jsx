@@ -41,16 +41,16 @@ export default function ResponsiveFooter() {
       { name: "Thriller" },
     ],
     movies: [
-      { name: "Our story", href: "#ourstory" },
+      { name: "", href: "" },
       { name: "Popular Movies", href: "/popular" },
       { name: "Top Rated", href: "/top-rated" },
       { name: "Coming Soon", href: "/coming-soon" },
     ],
     support: [
-      { name: "Help Center", href: "/help" },
-      { name: "Contact Us", href: "/contact" },
-      { name: "FAQ", href: "/faq" },
-      { name: "Report Issue", href: "/report" },
+      { name: "Our Story", href: "#ourstory" },
+      { name: "Contact Us", href: "#contact/report" },
+      { name: "FAQ", href: "#faq" },
+      { name: "Report Issue", href: "#contact/report" },
     ],
   };
 
@@ -198,15 +198,12 @@ export default function ResponsiveFooter() {
               <ul className="space-y-3 lg:space-y-4">
                 {footerLinks.movies.map((link) => (
                   <li key={link.name}>
-                    <a
-                      onClick={() => {
-                        navigate("/aboutus");
-                      }}
-                      href={link.href}
+                    <Link
+                      to={link.href}
                       className="text-gray-400 hover:text-pink-500 transition-colors duration-200 text-sm block"
                     >
                       {link.name}
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -221,6 +218,19 @@ export default function ResponsiveFooter() {
                 {footerLinks.support.map((link) => (
                   <li key={link.name}>
                     <a
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (link.name === "Contact Us") {
+                          navigate("/aboutus?tab=contact");
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        } else if (link.name === "Report Issue") {
+                          navigate("/aboutus?tab=report");
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        } else {
+                          navigate("/aboutus" + link.href.toLowerCase());
+                          window.scrollIntoView({ behavior: "smooth" });
+                        }
+                      }}
                       href={link.href}
                       className="text-gray-400 hover:text-pink-500 transition-colors duration-200 text-sm block"
                     >

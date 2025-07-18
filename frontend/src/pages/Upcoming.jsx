@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Clock,
   Star,
@@ -13,38 +13,15 @@ import {
 import axios from "axios";
 import UpcomingMovieCard from "@/components/UpcomingMovieCard";
 import { useAppContext } from "@/context/AppContext";
-
-const TMDB_IMG = "https://image.tmdb.org/t/p/w500";
-
-// Blur Circle Component
-const BlurCircle = ({
-  top,
-  bottom,
-  left,
-  right,
-  size = "400px",
-  opacity = "0.1",
-}) => (
-  <div
-    className="absolute rounded-full bg-red-500 blur-3xl pointer-events-none"
-    style={{
-      top,
-      bottom,
-      left,
-      right,
-      width: size,
-      height: size,
-      opacity: opacity,
-    }}
-  />
-);
+import toast from "react-hot-toast";
+import BlurCircle from "@/components/BlurCircle";
 
 const Upcoming = () => {
   const [movies, setMovies] = useState([]);
   const [notify, setNotify] = useState({});
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
-  const { getToken } = useAppContext();
+  const { getToken, user } = useAppContext();
 
   // Mock data for demonstration
   useEffect(() => {
@@ -52,25 +29,32 @@ const Upcoming = () => {
     const getnotify = async () => {
       await axios.get("/api/upcoming").then((res) => {
         setMovies(res.data);
-        console.log(res.data);
+        // console.log(res.data);
       });
-      const res = await axios.get("/api/upcoming/user/notified", {
-        headers: {
-          Authorization: `Bearer ${await getToken()}`,
-        },
-      });
-      console.log(res);
-      const notifiedMap = {};
-      res.data.notified.forEach((id) => {
-        notifiedMap[id] = true;
-      });
-      setNotify(notifiedMap);
+      if (user) {
+        const res = await axios.get("/api/upcoming/user/notified", {
+          headers: {
+            Authorization: `Bearer ${await getToken()}`,
+          },
+        });
+        console.log(res);
+        const notifiedMap = {};
+        res.data.notified.forEach((id) => {
+          notifiedMap[id] = true;
+        });
+        setNotify(notifiedMap);
+      }
       setLoading(false);
     };
     getnotify();
-  }, []);
+  }, [user]);
 
   const handleNotify = async (tmdbId) => {
+    console.log("Notify clicked for TMDB ID:", tmdbId);
+    if (!user) {
+      toast.error("please login first");
+      return false;
+    }
     // Simulate API call
     console.log("clicked");
     const res = await axios.post(
@@ -78,9 +62,9 @@ const Upcoming = () => {
       { tmdbId },
       { withCredentials: true }
     );
-    console.log(res);
-    // setNotify((n) => ({ ...n, [tmdbId]: !n[tmdbId] }));
+    // console.log(res);
     setNotify((n) => ({ ...n, [tmdbId]: res.data.notify }));
+    return true;
   };
 
   const filteredMovies = movies.filter((movie) => {
@@ -106,8 +90,8 @@ const Upcoming = () => {
       {/* Hero Section */}
       <section className="relative py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black"></div>
-        <BlurCircle top="10%" left="-10%" size="600px" opacity="0.1" />
-        <BlurCircle bottom="10%" right="-10%" size="500px" opacity="0.08" />
+        <BlurCircle top="10%" left="-10%" />
+        <BlurCircle bottom="10%" right="-10%" />
 
         <div className="relative max-w-7xl mx-auto text-center">
           <div className="flex items-center justify-center mb-8 group">
@@ -179,8 +163,8 @@ const Upcoming = () => {
 
       {/* Movies Grid */}
       <section className="py-12 px-4 sm:px-6 lg:px-8 relative">
-        <BlurCircle top="50%" left="10%" size="300px" opacity="0.05" />
-        <BlurCircle bottom="20%" right="5%" size="400px" opacity="0.06" />
+        <BlurCircle top="50%" left="10%" />
+        <BlurCircle bottom="20%" right="5%" />
 
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
@@ -210,7 +194,7 @@ const Upcoming = () => {
 
       {/* Call to Action */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 relative">
-        <BlurCircle bottom="10%" left="20%" size="600px" opacity="0.05" />
+        <BlurCircle bottom="10%" left="20%" />
 
         <div className="max-w-4xl mx-auto text-center">
           <div className="bg-gradient-to-br from-gray-900/50 to-gray-800/50 backdrop-blur-sm rounded-3xl p-12 border border-gray-800">

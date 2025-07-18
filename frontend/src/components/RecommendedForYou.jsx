@@ -11,7 +11,7 @@ const RecommendedForYou = () => {
   return (
     <div className="px-6 md:px-16 lg:px-24 xl:px-44 overflow-hidden">
       <div className="relative flex items-center justify-between pt-10 pb-10">
-        <BlurCircle top="0" right="-80px" />
+        <BlurCircle top="90px" right="880px" />
         <p className="text-gray-300 font-medium text-lg">Recommended for You</p>
       </div>
 

@@ -7,10 +7,9 @@ const NotifyButton = ({ tmdbId, isNotified, onNotify, notifyCount }) => {
 
   const handleClick = async () => {
     setIsLoading(true);
-    const hii = await onNotify(tmdbId);
+    const result = await onNotify(tmdbId);
     setIsLoading(false);
-    console.log(hii);
-    if (!isNotified) {
+    if (!isNotified && result) {
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
     }
