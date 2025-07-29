@@ -54,19 +54,18 @@ export default function ChatBot({ onClose }) {
 
     try {
       console.log("hii");
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: input }),
-      });
+      const response = await axios.post("/api/chat", { message: input });
       console.log(response);
-      const data = await response.json();
+
+      const data = response.data;
       console.log(data);
+
       const assistantMessage = {
         id: Date.now() + "-assistant",
         role: "assistant",
         content: data.reply || "Sorry, I couldn't get a response.",
       };
+
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
       console.log(err);
