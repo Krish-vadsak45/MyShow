@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
+import axios from "axios";
 
 export default function ChatBot({ onClose }) {
   const [messages, setMessages] = useState([]);
