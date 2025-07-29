@@ -1,7 +1,6 @@
 import React, { useState } from "react";
-import { Search, Calendar, Filter, Star, MessageCircle } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import ChatBot from "./ChatBot";
 
 const ChatBox = () => {
