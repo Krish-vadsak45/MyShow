@@ -60,7 +60,12 @@ const Upcoming = () => {
     const res = await axios.post(
       "/api/upcoming/notify",
       { tmdbId },
-      { withCredentials: true }
+      { withCredentials: true },
+      {
+        headers: {
+          Authorization: `Bearer ${await getToken()}`,
+        },
+      }
     );
     // console.log(res);
     setNotify((n) => ({ ...n, [tmdbId]: res.data.notify }));

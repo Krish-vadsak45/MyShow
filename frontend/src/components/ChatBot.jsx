@@ -25,7 +25,7 @@ export default function ChatBot({ onClose }) {
           id: "welcome",
           role: "assistant",
           content:
-            "Hi! I'm your MyShow assistant. I can help you:\n\n• Find movie recommendations\n• Get movie details and ratings\n• Check your bookings\n• Discover trending films\n• Find showtimes and theaters\n\nWhat movie are you looking for today?",
+            "Hi! I'm your MyShow assistant. I can help you:\n\n• Find movie recommendations\n• Get movie details and ratings\n• Check your bookings\n• Discover trending films\n• Find showtimes\n\nWhat movie are you looking for today?",
         },
       ]);
       setHasInitialized(true);
@@ -54,12 +54,9 @@ export default function ChatBot({ onClose }) {
     setIsLoading(true);
 
     try {
-      console.log("hii");
       const response = await axios.post("/api/chat", { message: input });
-      console.log(response);
 
       const data = response.data;
-      console.log(data);
 
       const assistantMessage = {
         id: Date.now() + "-assistant",

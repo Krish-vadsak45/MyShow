@@ -87,7 +87,7 @@ export const geminiChatAboutDatabase = async (req, res) => {
       })
       .join("\n")}\n\n`;
   }
-  console.log(context);
+  // console.log(context);
   if (!context.trim()) context = "No relevant data found in the database.";
 
   // Build prompt
@@ -173,12 +173,12 @@ export const getMovies = async (req, res) => {
           },
         }
       );
-      console.log("res", tmdbRes);
+      // console.log("res", tmdbRes);
       const movies = tmdbRes.data.results
         .slice(0, 3)
         .map((m) => m.title)
         .join(", ");
-      console.log("movi", movies);
+      // console.log("movi", movies);
       tmdbData = `Popular movies: ${movies}`;
     }
   } catch (err) {
@@ -191,7 +191,7 @@ export const getMovies = async (req, res) => {
   const prompt = `User: ${message}${
     tmdbData ? "\n" + tmdbData : ""
   }\nAssistant:`;
-  console.log(prompt);
+  // console.log(prompt);
 
   try {
     const geminiRes = await axios.post(
