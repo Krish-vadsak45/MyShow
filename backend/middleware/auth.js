@@ -24,13 +24,13 @@ export const protectAdmin = async (req, res, next) => {
 export const auth = async (req, res, next) => {
   try {
     const { userId } = await req.auth();
-    // console.log("loda", userId);
+    console.log("loda", userId);
     if (!userId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
     // Optionally, attach user info to req for downstream use
     req.user = await clerkClient.users.getUser(userId);
-    // console.log(req.user);
+    console.log(req.user);
     next();
   } catch (error) {
     console.error(error);
