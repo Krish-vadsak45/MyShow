@@ -54,7 +54,7 @@ const UpcomingMovieCard = ({ movie, notify, onNotify }) => {
         )}
 
         {/* Play Button Overlay */}
-        <div
+        {/* <div
           className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${
             isHovered ? "opacity-100" : "opacity-0"
           }`}
@@ -62,7 +62,7 @@ const UpcomingMovieCard = ({ movie, notify, onNotify }) => {
           <div className="bg-red-500/20 backdrop-blur-sm rounded-full p-4 border border-red-500/30">
             <Play className="w-8 h-8 text-red-400" />
           </div>
-        </div>
+        </div> */}
       </div>
       {/* Movie Info */}
       <div className="p-6">

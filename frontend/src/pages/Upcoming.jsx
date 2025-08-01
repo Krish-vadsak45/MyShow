@@ -37,7 +37,7 @@ const Upcoming = () => {
             Authorization: `Bearer ${await getToken()}`,
           },
         });
-        console.log(res);
+        // console.log(res);
         const notifiedMap = {};
         res.data.notified.forEach((id) => {
           notifiedMap[id] = true;
@@ -56,7 +56,7 @@ const Upcoming = () => {
       return false;
     }
     // Simulate API call
-    console.log("clicked");
+    // console.log("clicked");
     const res = await axios.post(
       "/api/upcoming/notify",
       { tmdbId },
