@@ -129,6 +129,8 @@ const sendBookingComfirmationEmail = inngest.createFunction(
                   ).toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata" })}
                 </p>
                 <p>Enjoy the show!</p>
+                <p>Visit our website</p> <a href="https://myshow-eight.vercel.app/">MyShow</a> <p> For more details.</p>
+                <br/>
                 <p>Thanks for booking with us!<br/>- MyShow Team</p>
               </div>
             `,
@@ -202,6 +204,8 @@ const sendShowReminders = inngest.createFunction(
             </p>
             <p>It starts in approximately <strong>8 hours</strong> - make sure you're ready!</p>
             <br/>
+            <p>Visit our website</p> <a href="https://myshow-eight.vercel.app/">MyShow</a> <p> For more details.</p>
+            <br/>
             <p>Enjoy the show! <br/>MyShow Team</p>
           </div>
         `,
@@ -241,7 +245,7 @@ const sendNewShowNotifications = inngest.createFunction(
                     <h2>Hi ${userName}, </h2>
                     <p>We've just added a new show to our library :< /p>
                     <h3 style="color: #F84565;">"${movieTitle}"</h3>
-                    <p>Visit our website</p>
+                    <p>Visit our website</p> <a href="https://myshow-eight.vercel.app/">MyShow</a> <p> For more details.</p>
                     <br/>
                     <p>Thanks, <br/>MyShow Team</p>
                     </div>`;

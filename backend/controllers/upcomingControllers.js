@@ -162,6 +162,7 @@ export const notifyUsers = async (tmdbId) => {
         "${movie.title}". If you’d like to stop these alerts,
         <a href="${unsubscribeUrl}">unsubscribe here</a>.
       </small>
+      <p>Visit our website</p> <a href="https://myshow-eight.vercel.app/">MyShow</a> <p> For more details.</p>
     </div>
   `,
     });
