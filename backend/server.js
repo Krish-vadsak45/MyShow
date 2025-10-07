@@ -13,6 +13,8 @@ import { stripeWebhooks } from "./controllers/stripeWebhooks.js";
 import Chatrouter from "./routes/chatRoutes.js";
 import recommendationRoutes from "./routes/recommendationRoutes.js";
 import upcomingRoutes from "./routes/upcomingRoutes.js";
+import { agent } from "supertest";
+import agentRoutes from "./routes/agentRoutes.js";
 
 const app = express();
 const port = process.env.PORT;
@@ -55,6 +57,7 @@ app.use("/api/user", userRouter);
 app.use("/api", Chatrouter);
 app.use("/api/recommendation", recommendationRoutes);
 app.use("/api/upcoming", upcomingRoutes);
+app.use("/api/agent", agentRoutes)
 
 app.listen(port, () =>
   console.log(`server listening at http://localhost:${port}`)
