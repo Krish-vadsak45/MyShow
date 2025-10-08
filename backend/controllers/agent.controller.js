@@ -5,6 +5,7 @@ import { DynamicTool } from "@langchain/core/tools";
 import z from "zod";
 import Booking from "../models/booking.model.js";
 import Movie from "../models/movie.model.js";
+import Show from "../models/show.model.js";
 
 // Safely extract a JSON array (aggregation pipeline) from model output
 function extractJsonArray(text) {
@@ -96,7 +97,7 @@ const Agent = async (req, res) => {
     const userMovieQueryTool = new DynamicTool({
       name: "query_user_movies",
       description: `
-        Build a MongoDB aggregation pipeline for the "Show" collection.
+        Build a MongoDB aggregation pipeline for the "Movie" collection.
         Return ONLY a valid JSON array (no prose, no comments, no code fences).
         Use double quotes for all keys/strings.
         Fields: "_id" (string), "title" (string), "overview" (string), "poster_path" (string), "backdrop_path" (string), "release_date" (string), "original_language" (string), "tagline" (string), "genres" (array), "cast" (array), "crew" (array), "vote_average" (number), "runtime" (number), "trailerKey" (string).
@@ -128,9 +129,50 @@ const Agent = async (req, res) => {
       },
     });
 
-    const tools = [userBookingsQueryTool, userMovieQueryTool];
+    // Tool to get shows the user has bookings for
+    const userShowsQueryTool = new DynamicTool({
+      name: "query_user_shows",
+      description: `
+        Build a MongoDB aggregation pipeline for the "Shows" collection.
+        Return ONLY a valid JSON array (no prose, no comments, no code fences).
+        Use double quotes for all keys/strings.
+        use this collection as now playing or currently showing movies.
+        Fields: "_id" (string), "movie" (string), "showDateTime" (string), "showPrice" (number), "occupiedSeats" (object).
+        Examples:
+        - Get shows for a specific movie ID "movie123":
+          [
+            {"$match":{"movie":"movie123"}},
+          ]
+      `,
+      schema: z
+        .string()
+        .describe("A JSON string that is an aggregation pipeline array."),
+      func: async (pipelineString) => {
+        try {
+          const pipeline =
+            extractJsonArray(pipelineString) ??
+            (() => {
+              throw new Error("Invalid pipeline JSON. Provide a JSON array.");
+            })();
 
-    const SYSTEM_HINT = `The current user's id is "${userId}". If the question uses "I", "me", or "my", scope results to this user. Use the tool to run an aggregation and then answer in one clear sentence.`;
+          // Always scope to the current user
+          const scopedPipeline = [{ $match: { user: userId } }, ...pipeline];
+
+          const result = await Show.aggregate(scopedPipeline).exec();
+          return JSON.stringify(result);
+        } catch (error) {
+          return `ERROR: ${error.message}`;
+        }
+      },
+    });
+
+    const tools = [
+      userBookingsQueryTool,
+      userMovieQueryTool,
+      userShowsQueryTool,
+    ];
+
+    const SYSTEM_HINT = `The current user's id is "${userId}". If the question uses "I", "me", or "my", scope results to this user. Use $lookup in the aggregation pipeline to join bookings to shows and movies when needed. Use the tool to run an aggregation and then answer in one clear sentence.`;
     console.log("Agent called 4");
 
     const prompt = ChatPromptTemplate.fromMessages([
