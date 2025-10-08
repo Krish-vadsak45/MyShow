@@ -2,92 +2,176 @@ import llm from "../config/groq.confing.js";
 import { AgentExecutor, createToolCallingAgent } from "langchain/agents";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { DynamicTool } from "@langchain/core/tools";
-import { MongoClient, ObjectId } from "mongodb";
 import z from "zod";
+import Booking from "../models/booking.model.js";
+import Movie from "../models/movie.model.js";
 
-const client = new MongoClient(process.env.MONGODB_URI);
-const db = client.db("myShow");
+// Safely extract a JSON array (aggregation pipeline) from model output
+function extractJsonArray(text) {
+  if (!text || typeof text !== "string") return null;
 
-const userBookingsQueryTool = new DynamicTool({
-  name: "query_user_bookings",
-  description: `
-    Use this tool to query the user's movie bookings from a MongoDB database.
-    You must return the aggregation pipeline as a valid JSON array, using double quotes for all keys and strings.
-    Available fields are: 'user' (string), 'show' (string), 'amount' (number), 'bookedSeats' (array), 'isPaid' (boolean), and 'paymentLink' (string).
+  // strip code fences like ```json ... ```
+  const noFences = text.replace(/```[\s\S]*?```/g, (m) =>
+    m.replace(/```(json)?/gi, "").replace(/```/g, "")
+  );
 
-    example: how much total amount did i spent?
-    pipeline: [
-    {
-        "$match": {
-            "isPaid": true
-        }
-    },
-    {
-        "$group": {
-            "_id": null,
-            "totalSpent": { "$sum": "$amount" },
-            "totalTickets": { "$sum": { "$size": "$bookedSeats" } }
-        }
-    }
-    ]
+  const start = noFences.indexOf("[");
+  const end = noFences.lastIndexOf("]");
+  if (start === -1 || end === -1 || end <= start) return null;
 
-    `,
-  schema: z
-    .string()
-    .describe("A valid MongoDB aggregate pipeline as a JSON string."),
-  func: async (pipelineString) => {
-    console.log("Received pipeline string from LLM:", pipelineString);
-    if (typeof pipelineString !== "string" || pipelineString.trim() === "") {
-      return "Error: Received an empty or invalid pipeline string.";
-    }
-    try {
-      const correctedJsonString = pipelineString.replace(/\}\s*\{/g, "}, {");
-      let pipeline = JSON.parse(correctedJsonString);
+  let jsonStr = noFences.slice(start, end + 1).trim();
 
-      pipeline = [
-        { $match: { user: "user_2yjf73buwicA6NGnzTAyNMAz1Lr" } },
-        ...pipeline,
-      ];
+  // normalize single quotes if needed
+  if (jsonStr.includes("'") && !jsonStr.includes('"')) {
+    jsonStr = jsonStr.replace(/'/g, '"');
+  }
+  // fix missing commas between objects
+  jsonStr = jsonStr.replace(/\}\s*\{/g, "}, {");
 
-      console.log("Parsed pipeline:", JSON.stringify(pipeline, null, 2));
-
-      const result = await db
-        .collection("Booking")
-        .aggregate(pipeline)
-        .toArray();
-
-      return JSON.stringify(result);
-    } catch (error) {
-      console.error("Error processing pipeline:", error);
-      return `Error: ${error.message}`;
-    }
-  },
-});
-
-const tools = [userBookingsQueryTool];
+  try {
+    const parsed = JSON.parse(jsonStr);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
 const Agent = async (req, res) => {
-  const prompt = ChatPromptTemplate.fromMessages([
-    [
-      "system",
-      "You are an expert at creating MongoDB aggregation pipelines based on user questions about a user's movie booking related question.You must use the provided tool. Return only the final answer in a clear, complete sentence.",
-    ],
-    ["human", "{input}"],
-    ["placeholder", "{agent_scratchpad}"],
-  ]);
+  console.log("Agent called");
+  try {
+    console.log(req.body.message);
+    const { message } = req.body;
+    const { userId } = (await req.auth()) || {};
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.log("Agent called 2");
 
-  const agent = await createToolCallingAgent({ llm, tools, prompt });
+    // Build tool per-request so it can capture userId
+    const userBookingsQueryTool = new DynamicTool({
+      name: "query_user_bookings",
+      description: `
+        Build a MongoDB aggregation pipeline for the "bookings" collection.
+        Return ONLY a valid JSON array (no prose, no comments, no code fences).
+        Use double quotes for all keys/strings.
+        Fields: "user" (string), "show" (string), "amount" (number), "bookedSeats" (array), "isPaid" (boolean), "paymentLink" (string), "createdAt", "updatedAt".
+        Examples:
+        - Total spent and total tickets:
+          [
+            {"$match":{"isPaid":true}},
+            {"$group":{"_id":null,"totalSpent":{"$sum":"$amount"},"totalTickets":{"$sum":{"$size":"$bookedSeats"}}}}
+          ]
+        - Last 5 paid bookings:
+          [
+            {"$match":{"isPaid":true}},
+            {"$sort":{"createdAt":-1}},
+            {"$limit":5},
+            {"$project":{"_id":0,"amount":1,"bookedSeats":1,"createdAt":1}}
+          ]
+      `,
+      schema: z
+        .string()
+        .describe("A JSON string that is an aggregation pipeline array."),
+      func: async (pipelineString) => {
+        try {
+          const pipeline =
+            extractJsonArray(pipelineString) ??
+            (() => {
+              throw new Error("Invalid pipeline JSON. Provide a JSON array.");
+            })();
 
-  const executor = new AgentExecutor({ agent, tools });
+          // Always scope to the current user
+          const scopedPipeline = [{ $match: { user: userId } }, ...pipeline];
 
-  const result = await executor.invoke({
-    input: "how much total amount did i spent?",
-  });
+          const result = await Booking.aggregate(scopedPipeline).exec();
+          return JSON.stringify(result);
+        } catch (error) {
+          return `ERROR: ${error.message}`;
+        }
+      },
+    });
+    console.log("Agent called 3");
 
-  res.status(200).json({
-    question: "how much total amount did i spent?",
-    answer: result.output,
-  });
+    // Tool to get movie IDs the user has booked
+    const userMovieQueryTool = new DynamicTool({
+      name: "query_user_movies",
+      description: `
+        Build a MongoDB aggregation pipeline for the "Show" collection.
+        Return ONLY a valid JSON array (no prose, no comments, no code fences).
+        Use double quotes for all keys/strings.
+        Fields: "_id" (string), "title" (string), "overview" (string), "poster_path" (string), "backdrop_path" (string), "release_date" (string), "original_language" (string), "tagline" (string), "genres" (array), "cast" (array), "crew" (array), "vote_average" (number), "runtime" (number), "trailerKey" (string).
+        Examples:
+        - Get details for specific movie title "Inception":
+          [
+            {"$match":{"title":"Inception"}},
+          ]
+      `,
+      schema: z
+        .string()
+        .describe("A JSON string that is an aggregation pipeline array."),
+      func: async (pipelineString) => {
+        try {
+          const pipeline =
+            extractJsonArray(pipelineString) ??
+            (() => {
+              throw new Error("Invalid pipeline JSON. Provide a JSON array.");
+            })();
+
+          // Always scope to the current user
+          const scopedPipeline = [...pipeline];
+
+          const result = await Movie.aggregate(scopedPipeline).exec();
+          return JSON.stringify(result);
+        } catch (error) {
+          return `ERROR: ${error.message}`;
+        }
+      },
+    });
+
+    const tools = [userBookingsQueryTool, userMovieQueryTool];
+
+    const SYSTEM_HINT = `The current user's id is "${userId}". If the question uses "I", "me", or "my", scope results to this user. Use the tool to run an aggregation and then answer in one clear sentence.`;
+    console.log("Agent called 4");
+
+    const prompt = ChatPromptTemplate.fromMessages([
+      [
+        "system",
+        [
+          "You are an expert at creating MongoDB aggregation pipelines for the bookings collection.",
+          "You MUST use the provided tool to answer.",
+          "Return only the final answer in a clear sentence.",
+          "Tool input must be a valid JSON array (no code fences, no comments).",
+          SYSTEM_HINT,
+        ].join(" "),
+      ],
+      ["human", "{input}"],
+      ["placeholder", "{agent_scratchpad}"],
+    ]);
+    console.log("Agent called 5");
+
+    const agent = await createToolCallingAgent({ llm, tools, prompt });
+    const executor = new AgentExecutor({ agent, tools });
+    console.log("Agent called 6");
+
+    // Limit message length to avoid context overflow
+    const MAX_INPUT_LENGTH = 1000;
+    const safeMessage =
+      typeof message === "string" && message.length > MAX_INPUT_LENGTH
+        ? message.slice(0, MAX_INPUT_LENGTH)
+        : message;
+
+    // Optionally, limit agent_scratchpad (if used by executor)
+    // If your agent framework allows, pass only the last N steps or none
+    // Here, we just pass input, but you can add: { input: safeMessage, agent_scratchpad: lastFew } if needed
+    const result = await executor.invoke({ input: safeMessage });
+    console.log("Agent called 7");
+    console.log("Agent result:", result);
+
+    return res.status(200).json({ answer: result.output });
+  } catch (err) {
+    console.error("Agent error:", err);
+    return res.status(500).json({ error: err.message });
+  }
 };
 
 export default Agent;

@@ -207,11 +207,11 @@ export const getMovies = async (req, res) => {
     // Gemini's response structure
     const reply =
       geminiRes.data.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "Sorry, I couldn't get a response.";
+      "Sorry, I couldn't get a response. ha";
     res.json({ reply });
   } catch (err) {
     console.log("OpenAI error:", err.response?.data || err.message || err);
-    res.status(500).json({ reply: "Sorry, I couldn't get a response." });
+    res.status(500).json({ reply: "Sorry, I couldn't get a response. ha ha" });
   }
 };
 

@@ -30,7 +30,7 @@ export const auth = async (req, res, next) => {
     }
     // Optionally, attach user info to req for downstream use
     req.user = await clerkClient.users.getUser(userId);
-    console.log(req.user);
+    // console.log(req.user);
     next();
   } catch (error) {
     console.error(error);

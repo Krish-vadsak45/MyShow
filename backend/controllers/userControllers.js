@@ -5,7 +5,7 @@ import Movie from "../models/movie.model.js";
 // API controller Function to get user bookings
 export const getUserBookings = async (req, res) => {
   try {
-    const userId = req.auth().userId;
+    const { userId } = await req.auth();
     const bookings = await Booking.find({ user: userId }).populate({
       path: "show",
       populate: { path: "movie" },
@@ -25,7 +25,7 @@ export const getUserBookings = async (req, res) => {
 export const updateFavourite = async (req, res) => {
   try {
     const { movieId } = req.body;
-    const userId = req.auth().userId;
+    const { userId } = await req.auth();
 
     const user = await clerkClient.users.getUser(userId);
     // console.log(user.privateMetadata);
@@ -55,7 +55,8 @@ export const updateFavourite = async (req, res) => {
 
 export const getFavourite = async (req, res) => {
   try {
-    const user = await clerkClient.users.getUser(req.auth().userId);
+    const { userId } = await req.auth();
+    const user = await clerkClient.users.getUser(userId);
     // console.log("getfavourites: ", user.privateMetadata);
     const favourites = user.privateMetadata.favourite;
 

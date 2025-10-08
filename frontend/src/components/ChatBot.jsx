@@ -6,6 +6,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import axios from "axios";
+import { useAuth } from "@clerk/clerk-react";
+import { useAppContext } from "@/context/AppContext";
 
 export default function ChatBot({ onClose }) {
   const [messages, setMessages] = useState([]);
@@ -13,6 +15,7 @@ export default function ChatBot({ onClose }) {
   const [isLoading, setIsLoading] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
   const messagesEndRef = useRef(null);
+  const { getToken } = useAppContext();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -54,14 +57,22 @@ export default function ChatBot({ onClose }) {
     setIsLoading(true);
 
     try {
-      const response = await axios.post("/api/chat", { message: input });
+      const response = await axios.post(
+        "/api/agent",
+        { message: input },
+        {
+          headers: {
+            Authorization: `Bearer ${await getToken()}`,
+          },
+        }
+      );
 
       const data = response.data;
-
+      console.log("API response:", data);
       const assistantMessage = {
         id: Date.now() + "-assistant",
         role: "assistant",
-        content: data.reply || "Sorry, I couldn't get a response.",
+        content: data.answer || "Sorry, I couldn't get a response.",
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
