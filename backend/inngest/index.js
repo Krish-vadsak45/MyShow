@@ -29,7 +29,7 @@ const syncUserCreation = inngest.createFunction(
       mobile_no: phone_numbers[0].phone_number,
     };
     await User.create(userData);
-  }
+  },
 );
 
 // Inngest function to delete user data to a database
@@ -40,7 +40,7 @@ const syncUserDeletion = inngest.createFunction(
     const { id } = event.data;
 
     await User.findByIdAndDelete({ _id: id });
-  }
+  },
 );
 
 // Inngest function to update user data to a database
@@ -65,7 +65,7 @@ const syncUserUpdate = inngest.createFunction(
       mobile_no: phone_numbers[0].phone_number,
     };
     await User.findByIdAndUpdate(id, userData);
-  }
+  },
 );
 
 // Inngest Function to cancel booking and release seats of show after 10 minutes of booking created if payment is not made
@@ -90,7 +90,7 @@ const releaseSeatsAndDeleteBooking = inngest.createFunction(
         await Booking.findByIdAndDelete(booking._id);
       }
     });
-  }
+  },
 );
 
 // Inngest function to send email when user book a show
@@ -120,12 +120,12 @@ const sendBookingComfirmationEmail = inngest.createFunction(
                 </p>
                 <p>
                   <strong>Date:</strong> ${new Date(
-                    booking.show.showDateTime
+                    booking.show.showDateTime,
                   ).toLocaleDateString("en-US", {
                     timeZone: "Asia/Kolkata",
                   })}<br/>
                   <strong>Time:</strong> ${new Date(
-                    booking.show.showDateTime
+                    booking.show.showDateTime,
                   ).toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata" })}
                 </p>
                 <p>Enjoy the show!</p>
@@ -135,7 +135,7 @@ const sendBookingComfirmationEmail = inngest.createFunction(
               </div>
             `,
     });
-  }
+  },
 );
 
 // Inngest function to send reminder email
@@ -162,7 +162,7 @@ const sendShowReminders = inngest.createFunction(
         const userIds = [...new Set(Object.values(show.occupiedSeats))];
         if (userIds.length === 0) continue;
         const users = await User.find({ _id: { $in: userIds } }).select(
-          "name email"
+          "name email",
         );
         for (const user of users) {
           tasks.push({
@@ -194,7 +194,7 @@ const sendShowReminders = inngest.createFunction(
             <h3 style="color: #F84565;">"${task.movieTitle}"</h3>
             <p>
               is scheduled for <strong>${new Date(
-                task.showTime
+                task.showTime,
               ).toLocaleDateString("en-US", {
                 timeZone: "Asia/Kolkata",
               })}</strong>
@@ -209,8 +209,8 @@ const sendShowReminders = inngest.createFunction(
             <p>Enjoy the show! <br/>MyShow Team</p>
           </div>
         `,
-          })
-        )
+          }),
+        ),
       );
     });
     const sent = results.filter((r) => r.status === "fulfilled").length;
@@ -220,7 +220,7 @@ const sendShowReminders = inngest.createFunction(
       failed,
       message: `Sent ${sent} reminder(s), failed to send ${failed} reminders`,
     };
-  }
+  },
 );
 
 // Inngest Function to send notification when a new show is added
@@ -256,7 +256,33 @@ const sendNewShowNotifications = inngest.createFunction(
       });
     }
     return { message: "Notification send." };
-  }
+  },
+);
+
+// Inngest function to release locked seats if no booking is created within 5 minutes
+const releaseLockedSeats = inngest.createFunction(
+  { id: "release-locked-seats" },
+  { event: "app/seats.locked" },
+  async ({ event, step }) => {
+    const { showId, seatId, userId } = event.data;
+
+    await step.sleep("wait-5-minutes", "5m");
+
+    await step.run("check-and-release", async () => {
+      const booking = await Booking.findOne({
+        user: userId,
+        show: showId,
+        bookedSeats: seatId,
+      });
+
+      if (!booking) {
+        await Show.updateOne(
+          { _id: showId, [`occupiedSeats.${seatId}`]: userId },
+          { $unset: { [`occupiedSeats.${seatId}`]: "" } },
+        );
+      }
+    });
+  },
 );
 
 // Create an empty array where we'll export future Inngest functions
@@ -268,4 +294,5 @@ export const functions = [
   sendBookingComfirmationEmail,
   sendShowReminders,
   sendNewShowNotifications,
+  releaseLockedSeats,
 ];

@@ -37,22 +37,60 @@ const SeatLayout = () => {
     }
   };
 
-  const handleSeatClick = (seatId) => {
+  const handleSeatClick = async (seatId) => {
     if (!selectedTime) {
       return toast("Please select a time first");
     }
-    if (!selectedSeats.includes(seatId) && selectedSeats.length > 4) {
-      return toast("You can only select up to 5 seats");
-    }
-    if (occupiedSeats.includes(seatId)) {
-      return toast("This Seat is already booked");
-    }
 
-    setSelectedSeats((prev) =>
-      prev.includes(seatId)
-        ? prev.filter((seat) => seat !== seatId)
-        : [...prev, seatId]
-    );
+    if (selectedSeats.includes(seatId)) {
+      // Unselecting the seat
+      try {
+        const { data } = await axios.post(
+          "/api/booking/unlock-seats",
+          { showId: selectedTime.showId, seatId },
+          {
+            headers: {
+              Authorization: `Bearer ${await getToken()}`,
+            },
+          },
+        );
+        if (data.success) {
+          setSelectedSeats((prev) => prev.filter((seat) => seat !== seatId));
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    } else {
+      // Selecting the seat
+      if (selectedSeats.length >= 5) {
+        return toast("You can only select up to 5 seats");
+      }
+      if (occupiedSeats.includes(seatId)) {
+        return toast("This Seat is already booked or locked");
+      }
+
+      try {
+        const { data } = await axios.post(
+          "/api/booking/lock-seats",
+          { showId: selectedTime.showId, seatId },
+          {
+            headers: {
+              Authorization: `Bearer ${await getToken()}`,
+            },
+          },
+        );
+
+        if (data.success) {
+          setSelectedSeats((prev) => [...prev, seatId]);
+        } else {
+          toast.error(data.message || "Could not lock seat");
+          getOccupiedSeats(); // Refresh to show current status
+        }
+      } catch (error) {
+        console.error(error);
+        toast.error("Error locking seat");
+      }
+    }
   };
 
   const renderSeats = (row, count = 9) => (
@@ -79,7 +117,7 @@ const SeatLayout = () => {
   const getOccupiedSeats = async () => {
     try {
       const { data } = await axios.get(
-        `/api/booking/seats/${selectedTime.showId}`
+        `/api/booking/seats/${selectedTime.showId}`,
       );
 
       if (data.success) {
@@ -108,7 +146,7 @@ const SeatLayout = () => {
           headers: {
             Authorization: `Bearer ${await getToken()}`,
           },
-        }
+        },
       );
       if (data.success) {
         window.location.href = data.url;

@@ -21,37 +21,80 @@ const checkSeatsAvailability = async (showId, selectedSeats) => {
   }
 };
 
+export const lockSeats = async (req, res) => {
+  try {
+    const { userId } = await req.auth();
+    const { showId, seatId } = req.body;
+
+    // Atomic update: only set if the seat key doesn't exist
+    const show = await Show.findOneAndUpdate(
+      { _id: showId, [`occupiedSeats.${seatId}`]: { $exists: false } },
+      { $set: { [`occupiedSeats.${seatId}`]: userId } },
+      { new: true },
+    );
+
+    if (!show) {
+      return res.json({
+        success: false,
+        message: "Seat already taken or locked",
+      });
+    }
+
+    // Schedule auto-unlock after 5 mins if no booking created
+    await inngest.send({
+      name: "app/seats.locked",
+      data: { showId, seatId, userId },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+};
+
+export const unlockSeats = async (req, res) => {
+  try {
+    const { userId } = await req.auth();
+    const { showId, seatId } = req.body;
+
+    // Only unlock if it was locked by this user
+    await Show.updateOne(
+      { _id: showId, [`occupiedSeats.${seatId}`]: userId },
+      { $unset: { [`occupiedSeats.${seatId}`]: "" } },
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+};
+
 export const createBooking = async (req, res) => {
   try {
     const { userId } = await req.auth();
     const { showId, selectedSeats } = req.body;
     const { origin } = req.headers;
-    // Check if the seat is available for the selected show
-    const isAvailable = await checkSeatsAvailability(showId, selectedSeats);
-    if (!isAvailable) {
-      return res
-        .status(400)
-        .json({ message: "Selected seats are not available" });
+
+    // Verify all seats are still locked by this user
+    const showData = await Show.findById(showId).populate("movie");
+    const valid = selectedSeats.every(
+      (seat) => showData.occupiedSeats[seat] === userId,
+    );
+
+    if (!valid) {
+      return res.status(400).json({
+        success: false,
+        message: "Seat reservation expired. Please select again.",
+      });
     }
 
-    // Get the show details
-    const showData = await Show.findById(showId).populate("movie");
-
-    // Create a new booking
+    // Now that seats are safely "temporary booked" (locked), create the booking record
     const booking = await Booking.create({
       user: userId,
       show: showId,
       amount: showData.showPrice * selectedSeats.length,
       bookedSeats: selectedSeats,
     });
-
-    selectedSeats.map((seat) => {
-      showData.occupiedSeats[seat] = userId;
-    });
-
-    showData.markModified("occupiedSeats");
-
-    await showData.save();
 
     // Stripe Gateway initialize
     const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY);

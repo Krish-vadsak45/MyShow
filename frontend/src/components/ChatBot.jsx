@@ -57,14 +57,20 @@ export default function ChatBot({ onClose }) {
     setIsLoading(true);
 
     try {
+      // Send the last 6 messages as context (excluding the very latest user message which is 'input')
+      const history = messages.slice(-6).map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
       const response = await axios.post(
         "/api/agent",
-        { message: input },
+        { message: input, history },
         {
           headers: {
             Authorization: `Bearer ${await getToken()}`,
           },
-        }
+        },
       );
 
       const data = response.data;
@@ -93,9 +99,6 @@ export default function ChatBot({ onClose }) {
 
   const handleQuickSuggestion = (value) => {
     setInput(value);
-    setTimeout(() => {
-      handleSubmit({ preventDefault: () => {} });
-    }, 100);
   };
 
   const getCurrentTime = () =>
