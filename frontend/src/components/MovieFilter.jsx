@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -11,12 +11,20 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
-import { Search, Filter, CalendarIcon, ChevronDown, X } from "lucide-react";
+import {
+  Search,
+  Filter,
+  CalendarIcon,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  X,
+} from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
 import MovieCard from "./MovieCard";
-import { useLocation } from "react-router-dom";
+import { MovieCardSkeleton } from "./skeletons";
 
-// Sample movie data
 const allGenres = [
   "Action",
   "Adventure",
@@ -31,6 +39,7 @@ const allGenres = [
   "Sci-Fi",
   "Crime",
 ];
+
 const languageMap = {
   English: "en",
   Japanese: "ja",
@@ -40,106 +49,136 @@ const languageMap = {
   German: "de",
 };
 
+const reverseLanguageMap = Object.fromEntries(
+  Object.entries(languageMap).map(([k, v]) => [v, k]),
+);
+
+const LIMIT = 16;
+
 const MovieFilter = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedGenres, setSelectedGenres] = useState([]);
-  const [selectedLanguages, setSelectedLanguages] = useState([]);
-  const [dateFrom, setDateFrom] = useState();
-  const [dateTo, setDateTo] = useState();
+  const { axios } = useAppContext();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [movies, setMovies] = useState([]);
+  const [totalMovies, setTotalMovies] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
-  const { shows } = useAppContext();
+  // Local state for search input (debounced into URL)
+  const [searchInput, setSearchInput] = useState(
+    () => searchParams.get("search") || "",
+  );
 
-  const location = useLocation();
+  // Derive all filter state from URL params
+  const selectedGenres = searchParams.get("genres")
+    ? searchParams.get("genres").split(",")
+    : [];
+  const selectedLanguageCodes = searchParams.get("languages")
+    ? searchParams.get("languages").split(",")
+    : [];
+  const selectedLanguages = selectedLanguageCodes
+    .map((code) => reverseLanguageMap[code])
+    .filter(Boolean);
+  const dateFrom = searchParams.get("dateFrom")
+    ? new Date(searchParams.get("dateFrom"))
+    : undefined;
+  const dateTo = searchParams.get("dateTo")
+    ? new Date(searchParams.get("dateTo"))
+    : undefined;
+  const currentPage = parseInt(searchParams.get("page") || "1");
 
+  // Debounce search input → URL param
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const genreParam = params.get("genre");
-    if (genreParam && allGenres.includes(genreParam)) {
-      setSelectedGenres([genreParam]);
-    }
-  }, [location.search]);
-  // Fuzzy search function
-  const fuzzySearch = (text, searchTerm) => {
-    if (!searchTerm) return true;
-    const searchLower = searchTerm.toLowerCase();
-    const textLower = text.toLowerCase();
+    const timer = setTimeout(() => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (searchInput) {
+          next.set("search", searchInput);
+        } else {
+          next.delete("search");
+        }
+        next.set("page", "1");
+        return next;
+      });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
-    // Simple fuzzy matching - checks if all characters in search term exist in order
-    let searchIndex = 0;
-    for (
-      let i = 0;
-      i < textLower.length && searchIndex < searchLower.length;
-      i++
-    ) {
-      if (textLower[i] === searchLower[searchIndex]) {
-        searchIndex++;
+  // Fetch movies whenever URL params change
+  useEffect(() => {
+    const fetchMovies = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        params.set("page", currentPage);
+        params.set("limit", LIMIT);
+
+        const search = searchParams.get("search");
+        if (search) params.set("search", search);
+
+        if (selectedGenres.length)
+          params.set("genres", selectedGenres.join(","));
+        if (selectedLanguageCodes.length)
+          params.set("languages", selectedLanguageCodes.join(","));
+        if (dateFrom)
+          params.set("dateFrom", dateFrom.toISOString().split("T")[0]);
+        if (dateTo) params.set("dateTo", dateTo.toISOString().split("T")[0]);
+
+        const { data } = await axios.get(`/api/show/all?${params.toString()}`);
+        if (data.success) {
+          setMovies(data.shows);
+          setTotalMovies(data.totalMovies);
+          setTotalPages(data.totalPages);
+        }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
       }
-    }
-    return searchIndex === searchLower.length;
+    };
+
+    fetchMovies();
+  }, [searchParams]);
+
+  const updateFilterParam = (key, value) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value) {
+        next.set(key, value);
+      } else {
+        next.delete(key);
+      }
+      next.set("page", "1");
+      return next;
+    });
   };
 
-  // Filter movies based on all criteria
-  const filteredMovies = useMemo(() => {
-    return shows.filter((movie) => {
-      // console.log(movie);
-      // Fuzzy search on title
-      if (!fuzzySearch(movie.title, searchTerm)) return false;
-
-      // Genre filter
-      if (
-        selectedGenres.length > 0 &&
-        !selectedGenres.some((genre) =>
-          movie.genres.map((g) => g.name).includes(genre)
-        )
-      ) {
-        return false;
-      }
-
-      // Language filter
-      if (
-        selectedLanguages.length > 0 &&
-        !selectedLanguages.some(
-          (lang) =>
-            languageMap[lang] &&
-            languageMap[lang].toLowerCase() ===
-              (movie.original_language || "").toLowerCase()
-        )
-      ) {
-        return false;
-      }
-
-      // Date range filter
-      const movieDate = new Date(movie.release_date);
-      if (dateFrom && movieDate < dateFrom) return false;
-      if (dateTo && movieDate > dateTo) return false;
-
-      return true;
+  const setPage = (page) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("page", page.toString());
+      return next;
     });
-  }, [searchTerm, selectedGenres, selectedLanguages, dateFrom, dateTo]);
+  };
 
   const handleGenreChange = (genre, checked) => {
-    if (checked) {
-      setSelectedGenres([...selectedGenres, genre]);
-    } else {
-      setSelectedGenres(selectedGenres.filter((g) => g !== genre));
-    }
+    const next = checked
+      ? [...selectedGenres, genre]
+      : selectedGenres.filter((g) => g !== genre);
+    updateFilterParam("genres", next.join(","));
   };
 
   const handleLanguageChange = (language, checked) => {
-    if (checked) {
-      setSelectedLanguages([...selectedLanguages, language]);
-    } else {
-      setSelectedLanguages(selectedLanguages.filter((l) => l !== language));
-    }
+    const code = languageMap[language];
+    const next = checked
+      ? [...selectedLanguageCodes, code]
+      : selectedLanguageCodes.filter((c) => c !== code);
+    updateFilterParam("languages", next.join(","));
   };
 
   const clearAllFilters = () => {
-    setSearchTerm("");
-    setSelectedGenres([]);
-    setSelectedLanguages([]);
-    setDateFrom(undefined);
-    setDateTo(undefined);
+    setSearchInput("");
+    setSearchParams({});
   };
 
   const activeFiltersCount =
@@ -172,8 +211,8 @@ const MovieFilter = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
               placeholder="Search movies..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="pl-10 bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-blue-500"
             />
           </div>
@@ -276,7 +315,12 @@ const MovieFilter = () => {
                   <Calendar
                     mode="single"
                     selected={dateFrom}
-                    onSelect={setDateFrom}
+                    onSelect={(date) =>
+                      updateFilterParam(
+                        "dateFrom",
+                        date ? date.toISOString().split("T")[0] : "",
+                      )
+                    }
                     initialFocus
                     className="bg-gray-800 text-white"
                   />
@@ -298,7 +342,12 @@ const MovieFilter = () => {
                   <Calendar
                     mode="single"
                     selected={dateTo}
-                    onSelect={setDateTo}
+                    onSelect={(date) =>
+                      updateFilterParam(
+                        "dateTo",
+                        date ? date.toISOString().split("T")[0] : "",
+                      )
+                    }
                     initialFocus
                     className="bg-gray-800 text-white"
                   />
@@ -352,7 +401,6 @@ const MovieFilter = () => {
                       style={{ pointerEvents: "auto" }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        console.log("cliked");
                         handleLanguageChange(language, false);
                       }}
                     />
@@ -366,19 +414,51 @@ const MovieFilter = () => {
         {/* Results Count */}
         <div className="mb-6">
           <p className="text-gray-400">
-            Showing {filteredMovies.length} of {shows.length} movies
+            Showing {movies.length} of {totalMovies} movies
           </p>
         </div>
 
         {/* Movie Grid */}
-        <div className="flex flex-col items-center md:flex-row  gap-8">
-          {filteredMovies.map((movie) => (
-            <MovieCard movie={movie} key={movie._id} />
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex flex-col items-center md:flex-row flex-wrap gap-8">
+            {[...Array(8)].map((_, i) => (
+              <MovieCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : movies.length > 0 ? (
+          <>
+            <div className="flex flex-col items-center md:flex-row flex-wrap gap-8">
+              {movies.map((movie) => (
+                <MovieCard movie={movie} key={movie._id} />
+              ))}
+            </div>
 
-        {/* No Results */}
-        {filteredMovies.length === 0 && (
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-4 mt-10">
+                <Button
+                  variant="outline"
+                  className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700 disabled:opacity-50 cursor-pointer"
+                  onClick={() => setPage(currentPage - 1)}
+                  disabled={currentPage <= 1}
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Prev
+                </Button>
+                <span className="text-gray-400 text-sm">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700 disabled:opacity-50 cursor-pointer"
+                  onClick={() => setPage(currentPage + 1)}
+                  disabled={currentPage >= totalPages}
+                >
+                  Next <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            )}
+          </>
+        ) : (
           <div className="text-center py-12">
             <div className="text-gray-400 text-lg mb-4">No movies found</div>
             <p className="text-gray-500 mb-6">

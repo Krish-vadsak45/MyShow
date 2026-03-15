@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import "dotenv/config";
 import connectDB from "./config/db.js";
 import { clerkMiddleware } from "@clerk/express";
@@ -14,6 +15,7 @@ import Chatrouter from "./routes/chatRoutes.js";
 import recommendationRoutes from "./routes/recommendationRoutes.js";
 import upcomingRoutes from "./routes/upcomingRoutes.js";
 import agentRoutes from "./routes/agentRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
 
 const app = express();
 const port = process.env.PORT;
@@ -31,6 +33,7 @@ const allowedOrigins = [
   "https://myshow-eight.vercel.app",
 ];
 
+app.use(cookieParser());
 app.use(express.json());
 app.use(
   cors({
@@ -57,6 +60,7 @@ app.use("/api", Chatrouter);
 app.use("/api/recommendation", recommendationRoutes);
 app.use("/api/upcoming", upcomingRoutes);
 app.use("/api/agent", agentRoutes);
+app.use("/api/auth", authRoutes);
 
 app.listen(port, () =>
   console.log(`server listening at http://localhost:${port}`)

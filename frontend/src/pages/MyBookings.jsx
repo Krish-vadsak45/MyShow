@@ -11,7 +11,7 @@ import { Calendar, Eye } from "lucide-react";
 import MovieTicketUi from "../components/MovieTicketUi";
 
 const MyBookings = () => {
-  const { axios, user, image_base_url, getToken } = useAppContext();
+  const { axios, user, image_base_url } = useAppContext();
   const [selectedBooking, setSelectedBooking] = useState(null);
 
   const currency = import.meta.env.VITE_CURRENCY;
@@ -21,11 +21,7 @@ const MyBookings = () => {
 
   const getMyBookings = async () => {
     try {
-      const { data } = await axios.get("/api/user/bookings", {
-        headers: {
-          Authorization: `Bearer ${await getToken()}`,
-        },
-      });
+      const { data } = await axios.get("/api/user/bookings");
       if (data.success) {
         // console.log(data.bookings);
         setBookings(data.bookings);

@@ -2,44 +2,50 @@ import Booking from "../models/booking.model.js";
 import Show from "../models/show.model.js";
 import User from "../models/user.model.js";
 import UpcomingMovie from "../models/upcomingMovie.model.js";
+import redis from "../config/redis.js";
 
-// API to check if a user is a admin
-export const isAdmin = (req, res) => {
+const DASHBOARD_CACHE_KEY = "admin:dashboard";
+const DASHBOARD_CACHE_TTL = 5 * 60; // 5 minutes
+
+export const isAdmin = (_req, res) => {
   res.json({ success: true, isAdmin: true });
 };
 
-// API to get dashboard data
-export const getDashboardData = async (req, res) => {
+export const getDashboardData = async (_req, res) => {
   try {
-    const bookings = await Booking.find({ isPaid: true });
-    const now = new Date().toISOString();
-    const activeShows = await Show.find({
-      showDateTime: { $gte: now },
-    }).populate("movie");
+    const cached = await redis.get(DASHBOARD_CACHE_KEY);
+    if (cached) {
+      return res.json(JSON.parse(cached));
+    }
 
-    const totalUser = await User.countDocuments();
+    const now = new Date().toISOString();
+    const [bookings, activeShows, totalUser] = await Promise.all([
+      Booking.find({ isPaid: true }),
+      Show.find({ showDateTime: { $gte: now } }).populate("movie"),
+      User.countDocuments(),
+    ]);
 
     const dashboardData = {
       totalBookings: bookings.length,
-      totalRevenue: bookings.reduce((acc, booking) => acc + booking.amount, 0),
+      totalRevenue: bookings.reduce((acc, b) => acc + b.amount, 0),
       activeShows,
       totalUser,
     };
 
-    res.json({ success: true, dashboardData });
+    const payload = { success: true, dashboardData };
+    await redis.set(DASHBOARD_CACHE_KEY, JSON.stringify(payload), "EX", DASHBOARD_CACHE_TTL);
+
+    res.json(payload);
   } catch (error) {
     console.error(error.message);
     res.json({ success: false, message: error.message });
   }
 };
 
-// API to get all show
-export const getAllShows = async (req, res) => {
+export const getAllShows = async (_req, res) => {
   try {
     const now = new Date().toISOString();
-    const shows = await Show.find({
-      showDateTime: { $gte: now },
-    })
+    const shows = await Show.find({ showDateTime: { $gte: now } })
       .populate("movie")
       .sort({ showDateTime: 1 });
     res.json({ success: true, shows });
@@ -49,8 +55,7 @@ export const getAllShows = async (req, res) => {
   }
 };
 
-// API to get all bookings
-export const getAllBookings = async (req, res) => {
+export const getAllBookings = async (_req, res) => {
   try {
     const bookings = await Booking.find({})
       .populate("user")
@@ -63,8 +68,7 @@ export const getAllBookings = async (req, res) => {
   }
 };
 
-// API to get movies with notifyCount > 0
-export const getNotifyMovies = async (req, res) => {
+export const getNotifyMovies = async (_req, res) => {
   try {
     const today = new Date();
     const movies = await UpcomingMovie.find({

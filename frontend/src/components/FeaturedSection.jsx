@@ -28,7 +28,7 @@ const FeaturedSection = () => {
       </div>
 
       <div className="flex flex-wrap gap-8 max-sm:justify-center mt-8">
-        {shows.slice(0, 4).map((show) => (
+        {shows.map((show) => (
           <MovieCard key={show._id} movie={show} />
         ))}
       </div>

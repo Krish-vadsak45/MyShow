@@ -6,7 +6,7 @@ import { useAppContext } from "../../context/AppContext.jsx";
 import { Calendar, Users, DollarSign } from "lucide-react";
 
 const ListShows = () => {
-  const { axios, getToken, user } = useAppContext();
+  const { axios, user } = useAppContext();
 
   const currency = import.meta.env.VITE_CURRENCY;
 
@@ -15,11 +15,7 @@ const ListShows = () => {
 
   const getAllShows = async () => {
     try {
-      const { data } = await axios.get("/api/admin/all-shows", {
-        headers: {
-          Authorization: `Bearer ${await getToken()}`,
-        },
-      });
+      const { data } = await axios.get("/api/admin/all-shows");
 
       setShows(data.shows);
       setLoading(false);

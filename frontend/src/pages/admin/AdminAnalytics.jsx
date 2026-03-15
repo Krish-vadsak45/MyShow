@@ -14,7 +14,6 @@ import {
   Cell,
   ResponsiveContainer,
 } from "recharts";
-import axios from "axios";
 import { useAppContext } from "../../context/AppContext";
 import Loading from "@/components/Loading";
 
@@ -28,7 +27,7 @@ const COLORS = [
 ];
 
 const AdminAnalytics = () => {
-  const { getToken } = useAppContext();
+  const { axios } = useAppContext();
 
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -36,12 +35,7 @@ const AdminAnalytics = () => {
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        const token = await getToken();
-        const res = await axios.get("/api/admin/analytics", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const res = await axios.get("/api/admin/analytics");
         // console.log(res.data);
         setAnalytics(res.data);
         setLoading(false);

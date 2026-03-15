@@ -45,10 +45,7 @@ const Agent = async (req, res) => {
   try {
     console.log(req.body.message);
     const { message } = req.body;
-    const { userId } = (await req.auth()) || {};
-    if (!userId) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = req.userId;
     console.log("Agent called 2");
 
     const userShowsQueryTool = new DynamicTool({

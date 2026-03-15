@@ -5,8 +5,6 @@ import { Input } from "@/components/ui/input";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
-import axios from "axios";
-import { useAuth } from "@clerk/clerk-react";
 import { useAppContext } from "@/context/AppContext";
 
 export default function ChatBot({ onClose }) {
@@ -15,7 +13,7 @@ export default function ChatBot({ onClose }) {
   const [isLoading, setIsLoading] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
   const messagesEndRef = useRef(null);
-  const { getToken } = useAppContext();
+  const { axios } = useAppContext();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -63,15 +61,7 @@ export default function ChatBot({ onClose }) {
         content: m.content,
       }));
 
-      const response = await axios.post(
-        "/api/agent",
-        { message: input, history },
-        {
-          headers: {
-            Authorization: `Bearer ${await getToken()}`,
-          },
-        },
-      );
+      const response = await axios.post("/api/agent", { message: input, history });
 
       const data = response.data;
       console.log("API response:", data);

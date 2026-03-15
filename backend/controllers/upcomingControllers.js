@@ -1,9 +1,18 @@
 import axios from "axios";
 import UpcomingMovie from "../models/upcomingMovie.model.js";
-import User from "../models/user.model.js";
 import sendEmail from "../config/nodeMailer.js";
+import redis from "../config/redis.js";
 
-export const fetchUpcoming = async (req, res) => {
+const UPCOMING_CACHE_KEY = "upcoming:movies";
+const UPCOMING_CACHE_TTL = 60 * 60; // 1 hour
+
+export const fetchUpcoming = async (_req, res) => {
+  // Serve from Redis cache if still fresh
+  const cached = await redis.get(UPCOMING_CACHE_KEY);
+  if (cached) {
+    return res.json(JSON.parse(cached));
+  }
+
   const today = new Date();
   const from = new Date(today);
   from.setDate(from.getDate() + 1);
@@ -13,48 +22,52 @@ export const fetchUpcoming = async (req, res) => {
   const url = `https://api.themoviedb.org/3/discover/movie?primary_release_date.gte=${from
     .toISOString()
     .slice(0, 10)}&primary_release_date.lte=${to.toISOString().slice(0, 10)}`;
-  // console.log("Fetching upcoming movies from TMDB:", url);
-  const { data } = await axios.get(url, {
-    headers: {
-      Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
-      accept: "application/json",
-    },
-  });
 
-  // const { data } = await axios.get(url);
-  // console.log("Upcoming movies fetched:", data.results);
-  // Upsert movies in DB for notification tracking
-  for (const m of data.results) {
-    await UpcomingMovie.updateOne(
-      { tmdbId: m.id },
-      {
-        $setOnInsert: {
-          tmdbId: m.id,
-          title: m.title,
-          posterPath: m.poster_path,
-          releaseDate: m.release_date,
-        },
+  const [{ data }, dbMovies] = await Promise.all([
+    axios.get(url, {
+      headers: {
+        Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
+        accept: "application/json",
       },
-      { upsert: true }
+    }),
+    UpcomingMovie.find(
+      { releaseDate: { $gte: from, $lte: to } },
+      { tmdbId: 1, notifyUsers: 1 }
+    ),
+  ]);
+
+  const notifyMap = new Map(dbMovies.map((m) => [m.tmdbId, m.notifyUsers.length]));
+
+  if (data.results.length > 0) {
+    await UpcomingMovie.bulkWrite(
+      data.results.map((m) => ({
+        updateOne: {
+          filter: { tmdbId: m.id },
+          update: {
+            $setOnInsert: {
+              tmdbId: m.id,
+              title: m.title,
+              posterPath: m.poster_path,
+              releaseDate: m.release_date,
+            },
+          },
+          upsert: true,
+        },
+      }))
     );
   }
-  // Return with notifyCount
-  const movies = await UpcomingMovie.find({
-    releaseDate: { $gte: from, $lte: to },
-  });
-  // console.log("Movies with notifyCount:", movies);
-  res.json(
-    data.results.map((m) => {
-      const dbMovie = movies.find((x) => x.tmdbId === m.id);
-      return {
-        tmdbId: m.id,
-        title: m.title,
-        posterPath: m.poster_path,
-        releaseDate: m.release_date,
-        notifyCount: dbMovie ? dbMovie.notifyUsers.length : 0,
-      };
-    })
-  );
+
+  const result = data.results.map((m) => ({
+    tmdbId: m.id,
+    title: m.title,
+    posterPath: m.poster_path,
+    releaseDate: m.release_date,
+    notifyCount: notifyMap.get(m.id) ?? 0,
+  }));
+
+  await redis.set(UPCOMING_CACHE_KEY, JSON.stringify(result), "EX", UPCOMING_CACHE_TTL);
+
+  res.json(result);
 };
 
 export const toggleNotify = async (req, res) => {
@@ -73,19 +86,21 @@ export const toggleNotify = async (req, res) => {
     notify = false;
   }
   await movie.save();
+
+  // Bust upcoming cache so notify counts update
+  await redis.del(UPCOMING_CACHE_KEY);
+
   res.json({ notify });
 };
 
-// Get all tmdbIds the current user is notified for
 export const getUserNotified = async (req, res) => {
   const userId = req.user.id;
-  // console.log("User ID:", userId);
   const movies = await UpcomingMovie.find({ notifyUsers: userId });
   const notifiedIds = movies.map((m) => m.tmdbId);
   res.json({ notified: notifiedIds });
 };
 
-export const adminList = async (req, res) => {
+export const adminList = async (_req, res) => {
   const today = new Date();
   const movies = await UpcomingMovie.find({
     notifyUsers: { $exists: true, $not: { $size: 0 } },
@@ -99,10 +114,7 @@ export const notifyUsers = async (tmdbId) => {
   if (!movie || movie.notified) return;
   for (const user of movie.notifyUsers) {
     await sendEmail({
-      // to: user.email,
-      // subject: "Now Playing!",
-      // body: `The movie "${movie.title}" is now playing!`,
-      to: user.email, // e.g. "krish@example.com"
+      to: user.email,
       subject: `"${movie.title}" is now playing – book your tickets!`,
       html: `
     <div style="font-family: Arial, sans-serif; line-height: 1.5;">
@@ -115,31 +127,13 @@ export const notifyUsers = async (tmdbId) => {
       </p>
 
       <p>
-        <strong>First Show:</strong><br/>
-        ${new Date(firstShow.showDateTime).toLocaleDateString("en-US", {
-          timeZone: "Asia/Kolkata",
-        })},
-        ${new Date(firstShow.showDateTime).toLocaleTimeString("en-US", {
-          timeZone: "Asia/Kolkata",
-        })}
-
-        ${
-          firstShow.screenName
-            ? `<br/><strong>Screen:</strong> ${firstShow.screenName}`
-            : ""
-        }
-      </p>
-
-      <p>
         Click the button below to choose seats and complete your booking
         before they sell out:
       </p>
 
       <p style="text-align: center; margin: 24px 0;">
         <a
-          href="${bookingUrl}"                /* e.g. https://myshow.com/booking/${
-        firstShow._id
-      } */
+          href="${bookingUrl}"
           style="
             background: #F84565;
             color: #ffffff;
@@ -153,13 +147,12 @@ export const notifyUsers = async (tmdbId) => {
       </p>
 
       <p>See you at the movies!</p>
-
-      <p>Thanks for using MyShow<br/>– The MyShow Team</p>
+      <p>Thanks for using MyShow<br/>– The MyShow Team</p>
 
       <hr style="border:none;border-top:1px solid #eaeaea;margin:32px 0;"/>
       <small style="color:#888;">
-        You’re receiving this email because you clicked “Notify Me” for
-        "${movie.title}". If you’d like to stop these alerts,
+        You're receiving this email because you clicked "Notify Me" for
+        "${movie.title}". If you'd like to stop these alerts,
         <a href="${unsubscribeUrl}">unsubscribe here</a>.
       </small>
       <p>Visit our website</p> <a href="https://myshow-eight.vercel.app/">MyShow</a> <p> For more details.</p>

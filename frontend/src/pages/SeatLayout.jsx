@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import Loading from "../components/Loading";
+import { SeatLayoutSkeleton } from "../components/skeletons";
 import { ClockIcon, ArrowRightIcon } from "lucide-react";
 import IsoTimeFormat from "../lib/IsoTimeFormat";
 import BlurCircle from "../components/BlurCircle";
@@ -16,7 +16,7 @@ const SeatLayout = () => {
   const [occupiedSeats, setOccupiedSeats] = useState([]);
   const navigate = useNavigate();
 
-  const { axios, user, getToken } = useAppContext();
+  const { axios, user } = useAppContext();
 
   const groupRows = [
     ["A", "B"],
@@ -45,15 +45,10 @@ const SeatLayout = () => {
     if (selectedSeats.includes(seatId)) {
       // Unselecting the seat
       try {
-        const { data } = await axios.post(
-          "/api/booking/unlock-seats",
-          { showId: selectedTime.showId, seatId },
-          {
-            headers: {
-              Authorization: `Bearer ${await getToken()}`,
-            },
-          },
-        );
+        const { data } = await axios.post("/api/booking/unlock-seats", {
+          showId: selectedTime.showId,
+          seatId,
+        });
         if (data.success) {
           setSelectedSeats((prev) => prev.filter((seat) => seat !== seatId));
         }
@@ -70,15 +65,10 @@ const SeatLayout = () => {
       }
 
       try {
-        const { data } = await axios.post(
-          "/api/booking/lock-seats",
-          { showId: selectedTime.showId, seatId },
-          {
-            headers: {
-              Authorization: `Bearer ${await getToken()}`,
-            },
-          },
-        );
+        const { data } = await axios.post("/api/booking/lock-seats", {
+          showId: selectedTime.showId,
+          seatId,
+        });
 
         if (data.success) {
           setSelectedSeats((prev) => [...prev, seatId]);
@@ -136,18 +126,10 @@ const SeatLayout = () => {
       if (!selectedTime || !selectedSeats.length) {
         return toast.error("Please select a time and seats");
       }
-      const { data } = await axios.post(
-        "/api/booking/create",
-        {
-          showId: selectedTime.showId,
-          selectedSeats,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${await getToken()}`,
-          },
-        },
-      );
+      const { data } = await axios.post("/api/booking/create", {
+        showId: selectedTime.showId,
+        selectedSeats,
+      });
       if (data.success) {
         window.location.href = data.url;
       } else {
@@ -227,7 +209,7 @@ const SeatLayout = () => {
       </div>
     </div>
   ) : (
-    <Loading />
+    <SeatLayoutSkeleton />
   );
 };
 

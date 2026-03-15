@@ -14,7 +14,7 @@ import { useAppContext } from "../../context/AppContext.jsx";
 import toast from "react-hot-toast";
 
 const Dashboard = () => {
-  const { axios, getToken, user, image_base_url } = useAppContext();
+  const { axios, user, image_base_url } = useAppContext();
 
   const currency = import.meta.env.VITE_CURRENCY;
 
@@ -52,11 +52,7 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const { data } = await axios.get("/api/admin/dashboard", {
-        headers: {
-          Authorization: `Bearer ${await getToken()}`,
-        },
-      });
+      const { data } = await axios.get("/api/admin/dashboard");
       // console.log(data);
       if (data.success) {
         setDashboardData(data.dashboardData);

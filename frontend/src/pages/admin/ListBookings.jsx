@@ -6,7 +6,7 @@ import { useAppContext } from "../../context/AppContext.jsx";
 import { Calendar, User, MapPin, DollarSign, Ticket } from "lucide-react";
 
 const ListBookings = () => {
-  const { axios, getToken, user } = useAppContext();
+  const { axios, user } = useAppContext();
 
   const currency = import.meta.env.VITE_CURRENCY;
 
@@ -15,11 +15,7 @@ const ListBookings = () => {
 
   const getAllBookings = async () => {
     try {
-      const { data } = await axios.get("/api/admin/all-bookings", {
-        headers: {
-          Authorization: `Bearer ${await getToken()}`,
-        },
-      });
+      const { data } = await axios.get("/api/admin/all-bookings");
       setBookings(data.bookings);
       // console.log(data);
     } catch (error) {

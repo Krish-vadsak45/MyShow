@@ -7,7 +7,12 @@ import { inngest } from "../inngest/index.js";
 // API controller Function to get user bookings
 export const getUserBookings = async (req, res) => {
   try {
-    const { userId } = await req.auth();
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.json({ success: false, message: "Authentication required" });
+    }
+
     const bookings = await Booking.find({ user: userId }).populate({
       path: "show",
       populate: { path: "movie" },
@@ -61,7 +66,11 @@ export const getUserBookings = async (req, res) => {
 export const updateFavourite = async (req, res) => {
   try {
     const { movieId } = req.body;
-    const { userId } = await req.auth();
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.json({ success: false, message: "Authentication required" });
+    }
 
     const user = await clerkClient.users.getUser(userId);
     // console.log(user.privateMetadata);
@@ -91,7 +100,12 @@ export const updateFavourite = async (req, res) => {
 
 export const getFavourite = async (req, res) => {
   try {
-    const { userId } = await req.auth();
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.json({ success: false, message: "Authentication required" });
+    }
+
     const user = await clerkClient.users.getUser(userId);
     // console.log("getfavourites: ", user.privateMetadata);
     const favourites = user.privateMetadata.favourite;

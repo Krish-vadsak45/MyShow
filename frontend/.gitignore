@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 
 .env
+testsprite_tests
+REDIS.md

@@ -5,7 +5,7 @@ import { Heart, PlayCircleIcon, StarIcon } from "lucide-react";
 import timeFormat from "../lib/timeFormat";
 import DateSelect from "../components/DateSelect";
 import MovieCard from "../components/MovieCard";
-import Loading from "../components/Loading";
+import { MovieDetailSkeleton } from "../components/skeletons";
 import { useAppContext } from "../context/AppContext";
 import toast from "react-hot-toast";
 
@@ -17,7 +17,6 @@ const MovieDetail = () => {
     fetchFavouriteMovies,
     favouriteMovies,
     image_base_url,
-    getToken,
   } = useAppContext();
 
   const { id } = useParams();
@@ -53,17 +52,9 @@ const MovieDetail = () => {
       if (!user) {
         return toast.error("Please login to proceed");
       }
-      const { data } = await axios.post(
-        "/api/user/update-favourite",
-        {
-          movieId: id,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${await getToken()}`,
-          },
-        }
-      );
+      const { data } = await axios.post("/api/user/update-favourite", {
+        movieId: id,
+      });
       if (data.success) {
         await fetchFavouriteMovies();
         toast.success(data.message);
@@ -230,7 +221,7 @@ const MovieDetail = () => {
       )}
     </>
   ) : (
-    <Loading />
+    <MovieDetailSkeleton />
   );
 };
 

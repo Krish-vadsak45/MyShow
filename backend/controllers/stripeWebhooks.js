@@ -1,6 +1,7 @@
 import stripe from "stripe";
 import Booking from "../models/booking.model.js";
 import { inngest } from "../inngest/index.js";
+import redis from "../config/redis.js";
 
 export const stripeWebhooks = async (req, res) => {
   const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY);
@@ -32,7 +33,10 @@ export const stripeWebhooks = async (req, res) => {
           paymentLink: "",
         });
 
-        // Send Comformation email
+        // Bust dashboard cache — revenue/booking count changed
+        await redis.del("admin:dashboard");
+
+        // Send confirmation email
         await inngest.send({
           name: "app/show.booked",
           data: { bookingId },

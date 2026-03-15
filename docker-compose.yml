@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "4000:4000"
+    environment:
+      - PORT=4000
+      - MONGODB_URI=mongodb://mongo:27017 # Override for container network communication
+    env_file:
+      - ./backend/.env  # Assumes backend/.env exists. If not, use root .env
+    depends_on:
+      - mongo
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Pass these from environment variables or .env file
+        - VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}
+        - VITE_TMDB_IMAGE_BASE_URL=${VITE_TMDB_IMAGE_BASE_URL}
+        - VITE_CURRENCY=${VITE_CURRENCY}
+    ports:
+      - "5173:80"  # Expose on 5173 so local dev workflow feels similar
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017" # Map to host if you want access from tools
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mongo-data:

@@ -5,17 +5,13 @@ import Title from "../../components/admin/Title";
 import toast from "react-hot-toast";
 
 const ListNotifyMovies = () => {
-  const { axios, getToken, image_base_url } = useAppContext();
+  const { axios, image_base_url } = useAppContext();
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchNotifyMovies = async () => {
     try {
-      const { data } = await axios.get("/api/admin/notify-movies", {
-        headers: {
-          Authorization: `Bearer ${await getToken()}`,
-        },
-      });
+      const { data } = await axios.get("/api/admin/notify-movies");
       if (data.success) {
         setMovies(data.movies);
       } else {

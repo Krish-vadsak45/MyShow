@@ -15,7 +15,7 @@ import toast from "react-hot-toast";
 import Title from "../../components/admin/Title.jsx";
 
 const AddShows = () => {
-  const { axios, getToken, user, image_base_url } = useAppContext();
+  const { axios, user, image_base_url } = useAppContext();
 
   const currency = import.meta.env.VITE_CURRENCY;
   const [nowPlayingMovies, setNowPlayingmovies] = useState([]);
@@ -34,11 +34,7 @@ const AddShows = () => {
 
   const fetchNowPlayongMovies = async () => {
     try {
-      const { data } = await axios.get("/api/show/now-playing", {
-        headers: {
-          Authorization: `Bearer ${await getToken()}`,
-        },
-      });
+      const { data } = await axios.get("/api/show/now-playing");
       if (data.success) {
         setNowPlayingmovies(data.movies);
         fetchNotifyCounts(data.movies);
@@ -51,15 +47,7 @@ const AddShows = () => {
   const fetchNotifyCounts = async (movies) => {
     try {
       const tmdbIds = movies.map((movie) => movie.id);
-      const { data } = await axios.post(
-        "/api/show/notify-count",
-        { tmdbIds },
-        {
-          headers: {
-            Authorization: `Bearer ${await getToken()}`,
-          },
-        }
-      );
+      const { data } = await axios.post("/api/show/notify-count", { tmdbIds });
       if (data.success) {
         const counts = {};
         data.notifyCounts.forEach(({ tmdbId, notifyCount }) => {
@@ -127,11 +115,7 @@ const AddShows = () => {
         showInput,
         showPrice: Number(showPrice),
       };
-      const { data } = await axios.post("/api/show/add", payload, {
-        headers: {
-          Authorization: `Bearer ${await getToken()}`,
-        },
-      });
+      const { data } = await axios.post("/api/show/add", payload);
       if (data.success) {
         toast.success("Show added successfully");
         setSelectedMovie(null);

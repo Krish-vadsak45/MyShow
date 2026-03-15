@@ -2,49 +2,37 @@ import Show from "../models/show.model.js";
 import Booking from "../models/booking.model.js";
 import stripe from "stripe";
 import { inngest } from "../inngest/index.js";
+import redis from "../config/redis.js";
 
-// Function to check availability of selected seats for a movie
-const checkSeatsAvailability = async (showId, selectedSeats) => {
-  try {
-    const showData = await Show.findById(showId);
-    if (!showData) {
-      return false;
-    }
+const SEAT_LOCK_TTL = 5 * 60; // 5 minutes in seconds
+const seatKey = (showId, seatId) => `seat:${showId}:${seatId}`;
 
-    const occupiedSeats = showData.occupiedSeats;
-    const isAnySeatTaken = selectedSeats.some((seat) => occupiedSeats[seat]);
-
-    return !isAnySeatTaken;
-  } catch (error) {
-    console.error(error.message);
-    return false;
-  }
-};
+// Atomic unlock — only deletes the key if it still belongs to this user
+const unlockScript = `
+  if redis.call("get", KEYS[1]) == ARGV[1] then
+    return redis.call("del", KEYS[1])
+  else
+    return 0
+  end
+`;
 
 export const lockSeats = async (req, res) => {
   try {
-    const { userId } = await req.auth();
+    const userId = req.userId;
     const { showId, seatId } = req.body;
 
-    // Atomic update: only set if the seat key doesn't exist
-    const show = await Show.findOneAndUpdate(
-      { _id: showId, [`occupiedSeats.${seatId}`]: { $exists: false } },
-      { $set: { [`occupiedSeats.${seatId}`]: userId } },
-      { new: true },
+    // NX = only set if key does NOT exist → atomic "first writer wins"
+    const acquired = await redis.set(
+      seatKey(showId, seatId),
+      userId,
+      "EX",
+      SEAT_LOCK_TTL,
+      "NX",
     );
 
-    if (!show) {
-      return res.json({
-        success: false,
-        message: "Seat already taken or locked",
-      });
+    if (!acquired) {
+      return res.json({ success: false, message: "Seat already taken or locked" });
     }
-
-    // Schedule auto-unlock after 5 mins if no booking created
-    await inngest.send({
-      name: "app/seats.locked",
-      data: { showId, seatId, userId },
-    });
 
     res.json({ success: true });
   } catch (error) {
@@ -54,14 +42,10 @@ export const lockSeats = async (req, res) => {
 
 export const unlockSeats = async (req, res) => {
   try {
-    const { userId } = await req.auth();
+    const userId = req.userId;
     const { showId, seatId } = req.body;
 
-    // Only unlock if it was locked by this user
-    await Show.updateOne(
-      { _id: showId, [`occupiedSeats.${seatId}`]: userId },
-      { $unset: { [`occupiedSeats.${seatId}`]: "" } },
-    );
+    await redis.eval(unlockScript, 1, seatKey(showId, seatId), userId);
 
     res.json({ success: true });
   } catch (error) {
@@ -71,15 +55,15 @@ export const unlockSeats = async (req, res) => {
 
 export const createBooking = async (req, res) => {
   try {
-    const { userId } = await req.auth();
+    const userId = req.userId;
     const { showId, selectedSeats } = req.body;
     const { origin } = req.headers;
 
-    // Verify all seats are still locked by this user
-    const showData = await Show.findById(showId).populate("movie");
-    const valid = selectedSeats.every(
-      (seat) => showData.occupiedSeats[seat] === userId,
+    // Verify every seat is still Redis-locked by this user
+    const lockValues = await redis.mget(
+      ...selectedSeats.map((s) => seatKey(showId, s)),
     );
+    const valid = lockValues.every((val) => val === userId);
 
     if (!valid) {
       return res.status(400).json({
@@ -88,7 +72,16 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    // Now that seats are safely "temporary booked" (locked), create the booking record
+    const showData = await Show.findById(showId).populate("movie");
+
+    // Permanently mark seats in MongoDB (persists across Redis restarts)
+    const permanentUpdate = {};
+    selectedSeats.forEach((s) => (permanentUpdate[`occupiedSeats.${s}`] = userId));
+    await Show.updateOne({ _id: showId }, { $set: permanentUpdate });
+
+    // Release Redis locks — MongoDB is now the source of truth for these seats
+    await redis.del(...selectedSeats.map((s) => seatKey(showId, s)));
+
     const booking = await Booking.create({
       user: userId,
       show: showId,
@@ -96,17 +89,12 @@ export const createBooking = async (req, res) => {
       bookedSeats: selectedSeats,
     });
 
-    // Stripe Gateway initialize
     const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY);
-
-    //Creating line items to for stripe
     const line_items = [
       {
         price_data: {
           currency: "usd",
-          product_data: {
-            name: showData.movie.title,
-          },
+          product_data: { name: showData.movie.title },
           unit_amount: Math.floor(booking.amount) * 100,
         },
         quantity: 1,
@@ -116,23 +104,19 @@ export const createBooking = async (req, res) => {
     const session = await stripeInstance.checkout.sessions.create({
       success_url: `${origin}/loading/mybookings`,
       cancel_url: `${origin}/mybookings`,
-      line_items: line_items,
+      line_items,
       mode: "payment",
-      metadata: {
-        bookingId: booking._id.toString(),
-      },
-      expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
+      metadata: { bookingId: booking._id.toString() },
+      expires_at: Math.floor(Date.now() / 1000) + 32 * 60,
     });
 
     booking.paymentLink = session.url;
     await booking.save();
 
-    // Run inngest sheduler function to check payment ststus after 10 minuts
+    // Inngest still checks payment status after 10 min and cleans up if unpaid
     await inngest.send({
       name: "app/checkpayment",
-      data: {
-        bookingId: booking._id.toString(),
-      },
+      data: { bookingId: booking._id.toString() },
     });
 
     res.json({ success: true, url: session.url });
@@ -142,13 +126,21 @@ export const createBooking = async (req, res) => {
   }
 };
 
-//
 export const getOccupiedSeats = async (req, res) => {
   try {
     const { showId } = req.params;
-    const showData = await Show.findById(showId);
 
-    const occupiedSeats = Object.keys(showData.occupiedSeats);
+    // MongoDB: permanently booked seats (post-booking-creation)
+    const showData = await Show.findById(showId);
+    const permanentSeats = Object.keys(showData.occupiedSeats);
+
+    // Redis: temp-locked seats still in checkout
+    const redisKeys = await redis.keys(`seat:${showId}:*`);
+    const tempLockedSeats = redisKeys.map((k) => k.split(":")[2]);
+
+    // Union — deduplicate
+    const occupiedSeats = [...new Set([...permanentSeats, ...tempLockedSeats])];
+
     res.json({ success: true, occupiedSeats });
   } catch (error) {
     console.error(error.message);

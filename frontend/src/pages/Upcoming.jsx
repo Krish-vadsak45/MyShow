@@ -15,80 +15,46 @@ import UpcomingMovieCard from "@/components/UpcomingMovieCard";
 import { useAppContext } from "@/context/AppContext";
 import toast from "react-hot-toast";
 import BlurCircle from "@/components/BlurCircle";
+import { UpcomingSkeleton } from "@/components/skeletons";
 
 const Upcoming = () => {
   const [movies, setMovies] = useState([]);
   const [notify, setNotify] = useState({});
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
-  const { getToken, user } = useAppContext();
+  const { user } = useAppContext();
 
-  // Mock data for demonstration
   useEffect(() => {
-    // Simulate API call
-    const getnotify = async () => {
-      await axios.get("/api/upcoming").then((res) => {
-        setMovies(res.data);
-        // console.log(res.data);
-      });
+    const fetchData = async () => {
+      const res = await axios.get("/api/upcoming");
+      setMovies(res.data);
+
       if (user) {
-        const res = await axios.get("/api/upcoming/user/notified", {
-          headers: {
-            Authorization: `Bearer ${await getToken()}`,
-          },
-        });
-        // console.log(res);
+        const notifyRes = await axios.get("/api/upcoming/user/notified");
         const notifiedMap = {};
-        res.data.notified.forEach((id) => {
+        notifyRes.data.notified.forEach((id) => {
           notifiedMap[id] = true;
         });
         setNotify(notifiedMap);
       }
       setLoading(false);
     };
-    getnotify();
+    fetchData();
   }, [user]);
 
   const handleNotify = async (tmdbId) => {
-    console.log("Notify clicked for TMDB ID:", tmdbId);
     if (!user) {
       toast.error("please login first");
       return false;
     }
-    // Simulate API call
-    // console.log("clicked");
-    const res = await axios.post(
-      "/api/upcoming/notify",
-      { tmdbId },
-      {
-        withCredentials: true,
-        headers: {
-          Authorization: `Bearer ${await getToken()}`,
-        },
-      }
-    );
-    // console.log(res);
+    const res = await axios.post("/api/upcoming/notify", { tmdbId });
     setNotify((n) => ({ ...n, [tmdbId]: res.data.notify }));
     return true;
   };
 
-  const filteredMovies = movies.filter((movie) => {
-    if (filter === "all") return true;
-    // if (filter === "popular") return movie.popularity > 100;
-    // if (filter === "highly-rated") return movie.voteAverage > 8;
-    return true;
-  });
+  const filteredMovies = movies.filter(() => true);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen  text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading upcoming movies...</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <UpcomingSkeleton />;
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -118,17 +84,15 @@ const Upcoming = () => {
           </p>
 
           <div className="flex flex-wrap justify-center gap-4 mb-12">
-            {["Early Access", "Exclusive Previews", "Best Seats"].map(
-              (feature, index) => (
-                <div
-                  key={index}
-                  className="flex items-center bg-gray-900/50 backdrop-blur-sm rounded-full px-6 py-3 border border-gray-800 hover:border-red-500/50 transition-colors duration-300"
-                >
-                  <Sparkles className="w-4 h-4 text-red-400 mr-2" />
-                  <span className="text-gray-300">{feature}</span>
-                </div>
-              )
-            )}
+            {["Early Access", "Exclusive Previews", "Best Seats"].map((feature) => (
+              <div
+                key={feature}
+                className="flex items-center bg-gray-900/50 backdrop-blur-sm rounded-full px-6 py-3 border border-gray-800 hover:border-red-500/50 transition-colors duration-300"
+              >
+                <Sparkles className="w-4 h-4 text-red-400 mr-2" />
+                <span className="text-gray-300">{feature}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -143,23 +107,20 @@ const Upcoming = () => {
                   { key: "all", label: "All Movies", icon: Film },
                   { key: "popular", label: "Popular", icon: TrendingUp },
                   { key: "highly-rated", label: "Highly Rated", icon: Star },
-                ].map((filterOption) => {
-                  const IconComponent = filterOption.icon;
-                  return (
-                    <button
-                      key={filterOption.key}
-                      onClick={() => setFilter(filterOption.key)}
-                      className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center ${
-                        filter === filterOption.key
-                          ? "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg"
-                          : "text-gray-400 hover:text-white hover:bg-gray-800/50"
-                      }`}
-                    >
-                      <IconComponent className="w-4 h-4 mr-2" />
-                      {filterOption.label}
-                    </button>
-                  );
-                })}
+                ].map(({ key, label, icon: Icon }) => (
+                  <button
+                    key={key}
+                    onClick={() => setFilter(key)}
+                    className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center ${
+                      filter === key
+                        ? "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg"
+                        : "text-gray-400 hover:text-white hover:bg-gray-800/50"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 mr-2" />
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
           </div>

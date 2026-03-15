@@ -3,6 +3,7 @@ import User from "../models/user.model.js";
 import Booking from "../models/booking.model.js";
 import Show from "..//models/show.model.js";
 import sendEmail from "../config/nodeMailer.js";
+import redis from "../config/redis.js";
 
 // Create a client to send and receive events
 export const inngest = new Inngest({ id: "movie-ticket-booking" });
@@ -88,6 +89,8 @@ const releaseSeatsAndDeleteBooking = inngest.createFunction(
         show.markModified("occupiedSeats");
         await show.save();
         await Booking.findByIdAndDelete(booking._id);
+        // Bust dashboard cache — booking count/revenue changed
+        await redis.del("admin:dashboard");
       }
     });
   },
@@ -294,5 +297,5 @@ export const functions = [
   sendBookingComfirmationEmail,
   sendShowReminders,
   sendNewShowNotifications,
-  releaseLockedSeats,
+  // releaseLockedSeats removed — Redis TTL (5 min) handles seat auto-unlock now
 ];
