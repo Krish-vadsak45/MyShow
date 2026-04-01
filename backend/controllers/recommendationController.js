@@ -1,14 +1,22 @@
 import Movie from "../models/movie.model.js";
+import logger from "../config/logger.js";
 import Booking from "../models/booking.model.js";
 import Show from "../models/show.model.js";
 import User from "../models/user.model.js";
 import { clerkClient } from "@clerk/express";
+import redis from "../config/redis.js";
+
+const RECOMMENDATION_CACHE_TTL = 15 * 60; // 15 minutes
 
 // Simple logic: recommend movies based on user's most booked genre
 export const getPersonalizedRecommendations = async (req, res) => {
   try {
-    const userId = req.user.id; // assuming you use auth middleware
+    const userId = req.user.id;
     const now = new Date().toISOString();
+
+    const cacheKey = `recommendations:${userId}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) return res.json(JSON.parse(cached));
 
     // 1. Get all user's bookings, populate movie
     const bookings = await Booking.find({ user: userId }).populate({
@@ -104,9 +112,11 @@ export const getPersonalizedRecommendations = async (req, res) => {
         .limit(10);
     }
 
-    res.json({ success: true, recommended });
+    const payload = { success: true, recommended };
+    await redis.set(cacheKey, JSON.stringify(payload), "EX", RECOMMENDATION_CACHE_TTL);
+    res.json(payload);
   } catch (err) {
-    console.error(err);
+    logger.error({ err });
     res.status(500).json({ success: false, message: "Recommendation error" });
   }
 };

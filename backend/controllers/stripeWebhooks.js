@@ -1,4 +1,5 @@
 import stripe from "stripe";
+import logger from "../config/logger.js";
 import Booking from "../models/booking.model.js";
 import { inngest } from "../inngest/index.js";
 import redis from "../config/redis.js";
@@ -14,7 +15,8 @@ export const stripeWebhooks = async (req, res) => {
       process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (error) {
-    return res.status(400).send("webhook error :- ", error);
+    logger.error({ err: error }, "Stripe webhook signature error");
+    return res.status(400).json({ error: "Webhook signature verification failed" });
   }
 
   try {
@@ -46,11 +48,11 @@ export const stripeWebhooks = async (req, res) => {
       }
 
       default:
-        console.log("Unhandled event type:", event.type);
+        logger.warn({ eventType: event.type }, "Unhandled Stripe event type");
     }
     res.json({ received: true });
   } catch (error) {
-    console.error("webhook processing error :- ", error);
+    logger.error({ err: error }, "Stripe webhook processing error");
     res.status(500).send("Internal Server Error");
   }
 };

@@ -1,10 +1,15 @@
 import User from "../models/user.model.js";
+import logger from "../config/logger.js";
 import Booking from "../models/booking.model.js";
-import Show from "../models/show.model.js";
-import Movie from "../models/movie.model.js";
+import redis from "../config/redis.js";
+
+const ANALYTICS_CACHE_KEY = "admin:analytics";
+const ANALYTICS_CACHE_TTL = 30 * 60; // 30 minutes
 
 export const getAdminAnalytics = async (req, res) => {
   try {
+    const cached = await redis.get(ANALYTICS_CACHE_KEY);
+    if (cached) return res.json(JSON.parse(cached));
     // 1. Total Sales Per Day
     const salesPerDay = await Booking.aggregate([
       { $match: { isPaid: true } },
@@ -76,16 +81,18 @@ export const getAdminAnalytics = async (req, res) => {
     // 5. Total Registered Users
     const totalUsers = await User.countDocuments();
 
-    res.json({
+    const payload = {
       success: true,
       salesPerDay,
       topMovies,
       bookingsPerHour,
       ticketsPerMovie,
       totalUsers,
-    });
+    };
+    await redis.set(ANALYTICS_CACHE_KEY, JSON.stringify(payload), "EX", ANALYTICS_CACHE_TTL);
+    res.json(payload);
   } catch (error) {
-    console.error(error.message);
+    logger.error({ err: error });
     res.json({ success: false, message: error.message });
   }
 };

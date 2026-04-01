@@ -1,4 +1,5 @@
 import { clerkClient, verifyToken } from "@clerk/express";
+import logger from "../config/logger.js";
 
 const getVerifiedUserId = async (req) => {
   const token = req.cookies?.__auth_token;
@@ -26,7 +27,7 @@ export const protectAdmin = async (req, res, next) => {
     }
     next();
   } catch (error) {
-    console.error(error);
+    logger.error({ err: error }, "Auth middleware error");
     res.status(401).json({ success: false, message: "not-authorized" });
   }
 };
@@ -41,7 +42,7 @@ export const auth = async (req, res, next) => {
     req.user = await clerkClient.users.getUser(userId);
     next();
   } catch (error) {
-    console.error(error);
+    logger.error({ err: error }, "Auth middleware error");
     res.status(401).json({ success: false, message: "Not authorized" });
   }
 };

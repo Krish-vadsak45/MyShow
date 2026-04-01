@@ -1,4 +1,5 @@
 import { Inngest } from "inngest";
+import logger from "../config/logger.js";
 import User from "../models/user.model.js";
 import Booking from "../models/booking.model.js";
 import Show from "..//models/show.model.js";
@@ -80,18 +81,25 @@ const releaseSeatsAndDeleteBooking = inngest.createFunction(
       const bookingId = event.data.bookingId;
       const booking = await Booking.findById(bookingId);
 
-      //if payment is not made , release seats and delete booking
-      if (!booking.isPaid) {
-        const show = await Show.findById(booking.show);
-        booking.bookedSeats.forEach((seat) => {
-          delete show.occupiedSeats[seat];
-        });
-        show.markModified("occupiedSeats");
-        await show.save();
-        await Booking.findByIdAndDelete(booking._id);
-        // Bust dashboard cache — booking count/revenue changed
-        await redis.del("admin:dashboard");
-      }
+      // Idempotency guard — booking already deleted or already paid on a previous retry
+      if (!booking || booking.isPaid) return;
+
+      // Build the $unset map for every booked seat
+      const unsetSeats = {};
+      booking.bookedSeats.forEach((seat) => {
+        unsetSeats[`occupiedSeats.${seat}`] = "";
+      });
+
+      // Atomic $unset — safe to run multiple times because $unset on an
+      // already-missing field is a no-op, so retries never corrupt other bookings
+      await Show.updateOne({ _id: booking.show }, { $unset: unsetSeats });
+
+      // Delete booking after the seat release; if this line fails on the first
+      // attempt and Inngest retries, the guard above exits early (booking gone)
+      await Booking.findByIdAndDelete(bookingId);
+
+      // Bust dashboard cache — booking count/revenue changed
+      await redis.del("admin:dashboard");
     });
   },
 );
@@ -153,7 +161,7 @@ const sendShowReminders = inngest.createFunction(
     //prepare reminder tasks
     const reminderTasks = await step.run("prepare-reminder-tasks", async () => {
       const shows = await Show.find({
-        showTime: { $gte: windowStart, $lte: in8Hours },
+        showDateTime: { $gte: windowStart, $lte: in8Hours },
       }).populate("movie");
 
       const tasks = [];
@@ -172,7 +180,7 @@ const sendShowReminders = inngest.createFunction(
             userEmail: user.email,
             userName: user.name,
             movieTitle: show.movie.title,
-            showTime: show.showTime,
+            showTime: show.showDateTime,
           });
         }
       }
@@ -231,34 +239,30 @@ const sendNewShowNotifications = inngest.createFunction(
   { id: "send-new-show-notifications" },
   { event: "app/show.added" },
   async ({ event }) => {
-    console.log(event);
-    console.log(event.data);
     if (!event.data || !event.data.movieTitle) {
-      console.error("Missing movieTitle in event.data", event.data);
+      logger.error({ eventData: event.data }, "Missing movieTitle in event.data");
       return;
     }
     const { movieTitle } = event.data;
     const users = await User.find({});
-    for (const user of users) {
-      const userEmail = user.email;
-      const userName = user.name;
-
-      const subject = `New Movie Added: ${movieTitle}`;
-      const body = `<div style="font-family: Arial, sans-serif; padding: 20px;">
-                    <h2>Hi ${userName}, </h2>
-                    <p>We've just added a new show to our library :< /p>
+    const results = await Promise.allSettled(
+      users.map((user) =>
+        sendEmail({
+          to: user.email,
+          subject: `New Movie Added: ${movieTitle}`,
+          body: `<div style="font-family: Arial, sans-serif; padding: 20px;">
+                    <h2>Hi ${user.name}, </h2>
+                    <p>We've just added a new show to our library!</p>
                     <h3 style="color: #F84565;">"${movieTitle}"</h3>
                     <p>Visit our website</p> <a href="https://myshow-eight.vercel.app/">MyShow</a> <p> For more details.</p>
                     <br/>
                     <p>Thanks, <br/>MyShow Team</p>
-                    </div>`;
-      await sendEmail({
-        to: userEmail,
-        subject,
-        body,
-      });
-    }
-    return { message: "Notification send." };
+                    </div>`,
+        })
+      )
+    );
+    const sent = results.filter((r) => r.status === "fulfilled").length;
+    return { message: `Notifications sent: ${sent}/${users.length}` };
   },
 );
 

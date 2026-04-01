@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import logger from "./logger.js";
 
 const transporter = nodemailer.createTransport({
   host: "smtp-relay.brevo.com",
@@ -19,7 +20,8 @@ const sendEmail = async ({ to, subject, body }) => {
     });
     return response;
   } catch (err) {
-    console.error("Error while sending mail", err);
+    logger.error({ err }, "Error while sending mail");
+    throw err; // Re-throw so Inngest retries the step
   }
 };
 

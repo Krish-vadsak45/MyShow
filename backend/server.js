@@ -1,7 +1,11 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import compression from "compression";
+import rateLimit from "express-rate-limit";
+import pinoHttp from "pino-http";
 import "dotenv/config";
+import logger from "./config/logger.js";
 import connectDB from "./config/db.js";
 import { clerkMiddleware } from "@clerk/express";
 import { serve } from "inngest/express";
@@ -22,6 +26,28 @@ const port = process.env.PORT;
 
 await connectDB();
 
+// Rate limiters
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "Too many requests, please try again later." },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  skipSuccessfulRequests: true,
+  message: { success: false, message: "Too many auth attempts, please try again later." },
+});
+
+const bookingLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 15,
+  message: { success: false, message: "Too many booking requests, please slow down." },
+});
+
 // stripe webhooks routes
 app.use(
   "/api/stripe",
@@ -33,6 +59,8 @@ const allowedOrigins = [
   "https://myshow-eight.vercel.app",
 ];
 
+app.use(compression());
+app.use(pinoHttp({ logger }));
 app.use(cookieParser());
 app.use(express.json());
 app.use(
@@ -47,7 +75,13 @@ app.use(
   })
 );
 app.use(clerkMiddleware());
+app.use("/api/", globalLimiter);
+app.use("/api/auth", authLimiter);
+app.use("/api/booking/create", bookingLimiter);
 
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
 app.get("/", (req, res) => {
   res.send("server is live!");
 });
@@ -62,6 +96,15 @@ app.use("/api/upcoming", upcomingRoutes);
 app.use("/api/agent", agentRoutes);
 app.use("/api/auth", authRoutes);
 
+// Global error handler
+app.use((err, req, res, next) => {
+  logger.error({ err, method: req.method, path: req.path }, "Unhandled error");
+  res.status(err.status || 500).json({
+    success: false,
+    message: process.env.NODE_ENV === "production" ? "Internal Server Error" : err.message,
+  });
+});
+
 app.listen(port, () =>
-  console.log(`server listening at http://localhost:${port}`)
+  logger.info(`server listening at http://localhost:${port}`)
 );

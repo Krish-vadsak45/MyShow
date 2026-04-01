@@ -1,17 +1,64 @@
 import axios from "axios";
+import logger from "../config/logger.js";
 import Movie from "../models/movie.model.js";
 import Show from "../models/show.model.js";
 import UpcomingMovie from "../models/upcomingMovie.model.js";
 import { inngest } from "../inngest/index.js";
-import redis from "../config/redis.js";
+import redis, { getCachedData } from "../config/redis.js";
+import z from "zod";
 
 const SHOWS_CACHE_TTL = 10 * 60; // 10 minutes
 const SHOW_DETAIL_CACHE_TTL = 10 * 60;
 
-// Invalidate all paginated show listing cache keys
+// Helper to add jitter to TTL (±30s) to prevent cache stampede
+const withJitter = (seconds) => seconds + Math.floor(Math.random() * 60 - 30);
+
+// ─── Validation Schemas ───────────────────────────────────────────────────────
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_REGEX = /^\d{2}:\d{2}$/;
+
+const addShowSchema = z.object({
+  movieId: z.number().int().positive("movieId must be a positive integer"),
+  showPrice: z.number().positive("showPrice must be greater than 0"),
+  showInput: z
+    .array(
+      z.object({
+        date: z
+          .string()
+          .regex(DATE_REGEX, "date must be YYYY-MM-DD")
+          .refine(
+            (d) => new Date(d) > new Date(),
+            "Show date must be in the future",
+          ),
+        time: z
+          .array(z.string().regex(TIME_REGEX, "time must be HH:MM"))
+          .min(1, "Each date must have at least one time slot"),
+      }),
+    )
+    .min(1, "At least one show slot is required"),
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Invalidate all paginated show listing cache keys using SCAN (non-blocking)
 const invalidateShowsCache = async () => {
-  const keys = await redis.keys("shows:list:*");
-  if (keys.length > 0) await redis.del(...keys);
+  let cursor = "0";
+  try {
+    do {
+      const [nextCursor, keys] = await redis.scan(
+        cursor,
+        "MATCH",
+        "shows:list:*",
+        "COUNT",
+        100,
+      );
+      cursor = nextCursor;
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+    } while (cursor !== "0");
+  } catch (err) {
+    logger.error({ err }, "Error invalidating shows cache with SCAN");
+  }
 };
 
 // API to get now playing movies from TMDB API
@@ -22,11 +69,11 @@ export const getNowPlayingMovies = async (_req, res) => {
       {
         accept: "application/json",
         headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
-      }
+      },
     );
     res.json({ success: true, movies: data.results });
   } catch (error) {
-    console.log(error);
+    logger.error({ err: error });
     res.json({ success: false, message: error.message });
   }
 };
@@ -36,7 +83,9 @@ export const getNotifyCount = async (req, res) => {
   try {
     const { tmdbIds } = req.body;
     if (!Array.isArray(tmdbIds)) {
-      return res.status(400).json({ success: false, message: "tmdbIds must be an array" });
+      return res
+        .status(400)
+        .json({ success: false, message: "tmdbIds must be an array" });
     }
 
     const notifyCounts = await Promise.all(
@@ -44,12 +93,12 @@ export const getNotifyCount = async (req, res) => {
         const upcomingMovie = await UpcomingMovie.findOne({ tmdbId: id });
         const count = upcomingMovie ? upcomingMovie.notifyUsers.length : 0;
         return { tmdbId: id, notifyCount: count };
-      })
+      }),
     );
 
     res.json({ success: true, notifyCounts });
   } catch (error) {
-    console.log(error);
+    logger.error({ err: error });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -57,7 +106,13 @@ export const getNotifyCount = async (req, res) => {
 // API to add a new show — also busts the show listings cache
 export const addShow = async (req, res) => {
   try {
-    const { movieId, showInput, showPrice } = req.body;
+    const parsed = addShowSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res
+        .status(400)
+        .json({ success: false, errors: parsed.error.flatten() });
+    }
+    const { movieId, showInput, showPrice } = parsed.data;
 
     let movie = await Movie.findById(movieId);
 
@@ -79,7 +134,7 @@ export const addShow = async (req, res) => {
       const movieCreditData = movieCreditResponse.data;
       const movieTrailerData = movieTrailerResponse.data;
       const trailer = movieTrailerData.results.find(
-        (vid) => vid.type === "Trailer" && vid.site === "YouTube"
+        (vid) => vid.type === "Trailer" && vid.site === "YouTube",
       );
 
       movie = await Movie.create({
@@ -126,7 +181,7 @@ export const addShow = async (req, res) => {
 
     res.json({ success: true, message: "show added successfully" });
   } catch (error) {
-    console.log(error);
+    logger.error({ err: error });
     res.json({ success: false, message: error.message });
   }
 };
@@ -147,51 +202,74 @@ export const getShows = async (req, res) => {
     // Build a stable cache key from all query params
     const cacheKey = `shows:list:${page}:${limit}:${search || ""}:${genres || ""}:${languages || ""}:${dateFrom || ""}:${dateTo || ""}`;
 
-    const cached = await redis.get(cacheKey);
+    const cached = await getCachedData(cacheKey);
     if (cached) {
-      return res.json(JSON.parse(cached));
+      return res.json(cached);
     }
 
     const now = new Date();
-    const shows = await Show.find({ showDateTime: { $gte: now } })
-      .populate("movie")
-      .sort({ showDateTime: 1 });
-
-    const uniqueMoviesMap = new Map();
-    shows.forEach((show) => {
-      const movieId = show.movie._id?.toString();
-      if (!uniqueMoviesMap.has(movieId)) {
-        uniqueMoviesMap.set(movieId, show.movie);
-      }
-    });
-
-    let movies = Array.from(uniqueMoviesMap.values());
-
-    if (search) {
-      const searchLower = search.toLowerCase();
-      movies = movies.filter((m) => m.title.toLowerCase().includes(searchLower));
-    }
-    if (genres) {
-      const genreSet = new Set(genres.split(","));
-      movies = movies.filter((m) => m.genres.some((mg) => genreSet.has(mg.name)));
-    }
-    if (languages) {
-      const langSet = new Set(languages.split(","));
-      movies = movies.filter((m) => langSet.has(m.original_language));
-    }
-    if (dateFrom) {
-      const from = new Date(dateFrom);
-      movies = movies.filter((m) => new Date(m.release_date) >= from);
-    }
-    if (dateTo) {
-      const to = new Date(dateTo);
-      movies = movies.filter((m) => new Date(m.release_date) <= to);
-    }
-
-    const totalMovies = movies.length;
     const pageNum = Number.parseInt(page);
     const limitNum = Number.parseInt(limit);
-    const paginated = movies.slice((pageNum - 1) * limitNum, pageNum * limitNum);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Base pipeline: future shows → join movies → deduplicate by movie
+    const basePipeline = [
+      { $match: { showDateTime: { $gte: now } } },
+      {
+        $lookup: {
+          from: "movies",
+          localField: "movie",
+          foreignField: "_id",
+          as: "movieData",
+        },
+      },
+      { $unwind: "$movieData" },
+      { $group: { _id: "$movieData._id", movie: { $first: "$movieData" } } },
+    ];
+
+    // Movie-level filter stages pushed to DB — no in-memory filtering
+    const filterStages = [];
+    if (search) {
+      filterStages.push({
+        $match: { "movie.title": { $regex: search, $options: "i" } },
+      });
+    }
+    if (genres) {
+      filterStages.push({
+        $match: { "movie.genres.name": { $in: genres.split(",") } },
+      });
+    }
+    if (languages) {
+      filterStages.push({
+        $match: { "movie.original_language": { $in: languages.split(",") } },
+      });
+    }
+    if (dateFrom) {
+      filterStages.push({
+        $match: { "movie.release_date": { $gte: new Date(dateFrom) } },
+      });
+    }
+    if (dateTo) {
+      filterStages.push({
+        $match: { "movie.release_date": { $lte: new Date(dateTo) } },
+      });
+    }
+
+    // Run count and page in parallel
+    const [countResult, movieDocs] = await Promise.all([
+      Show.aggregate([...basePipeline, ...filterStages, { $count: "total" }]),
+      Show.aggregate([
+        ...basePipeline,
+        ...filterStages,
+        { $sort: { "movie.release_date": -1 } },
+        { $skip: skip },
+        { $limit: limitNum },
+        { $replaceRoot: { newRoot: "$movie" } },
+      ]),
+    ]);
+
+    const totalMovies = countResult[0]?.total || 0;
+    const paginated = movieDocs;
 
     const payload = {
       success: true,
@@ -201,11 +279,16 @@ export const getShows = async (req, res) => {
       currentPage: pageNum,
     };
 
-    await redis.set(cacheKey, JSON.stringify(payload), "EX", SHOWS_CACHE_TTL);
+    await redis.set(
+      cacheKey,
+      JSON.stringify(payload),
+      "EX",
+      withJitter(SHOWS_CACHE_TTL),
+    );
 
     res.json(payload);
   } catch (error) {
-    console.log(error);
+    logger.error({ err: error });
     res.json({ success: false, message: error.message });
   }
 };
@@ -216,9 +299,9 @@ export const getShow = async (req, res) => {
     const { movieId } = req.params;
     const cacheKey = `show:detail:${movieId}`;
 
-    const cached = await redis.get(cacheKey);
+    const cached = await getCachedData(cacheKey);
     if (cached) {
-      return res.json(JSON.parse(cached));
+      return res.json(cached);
     }
 
     const now = new Date();
@@ -235,11 +318,16 @@ export const getShow = async (req, res) => {
     });
 
     const payload = { success: true, movie, dateTime };
-    await redis.set(cacheKey, JSON.stringify(payload), "EX", SHOW_DETAIL_CACHE_TTL);
+    await redis.set(
+      cacheKey,
+      JSON.stringify(payload),
+      "EX",
+      withJitter(SHOW_DETAIL_CACHE_TTL),
+    );
 
     res.json(payload);
   } catch (error) {
-    console.log(error);
+    logger.error({ err: error });
     res.json({ success: false, message: error.message });
   }
 };

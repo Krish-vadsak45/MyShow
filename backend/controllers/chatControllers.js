@@ -1,4 +1,5 @@
 import axios from "axios";
+import logger from "../config/logger.js";
 import Movie from "../models/movie.model.js";
 import Show from "../models/show.model.js";
 import User from "../models/user.model.js";
@@ -39,7 +40,7 @@ export const geminiChatAboutDatabase = async (req, res) => {
     // Filter out bookings where the show didn't match the $gte filter
     bookingResults = bookingResults.filter((b) => b.show);
   } catch (err) {
-    console.error("DB fetch error:", err.message || err);
+    logger.error({ err }, "DB fetch error");
     return res.status(500).json({ reply: "Database fetch error." });
   }
 
@@ -140,13 +141,13 @@ Reply:
   } catch (err) {
     const status = err.response?.status;
     if (status === 503) {
-      console.warn("Gemini is overloaded (503)");
+      logger.warn("Gemini is overloaded (503)");
       return res.status(503).json({
         reply: "Gemini is currently overloaded. Please try again shortly. 🔁",
       });
     }
 
-    console.error("Gemini API error:", err.response?.data || err.message);
+    logger.error({ err, data: err.response?.data }, "Gemini API error");
     res.status(500).json({ reply: "Something went wrong with Gemini." });
   }
 };
@@ -182,7 +183,7 @@ export const getMovies = async (req, res) => {
       tmdbData = `Popular movies: ${movies}`;
     }
   } catch (err) {
-    console.log("OpenAI/TMDB error:", err.response?.data || err.message || err);
+    logger.error({ err, data: err.response?.data }, "TMDB error");
   }
   // console.log("1");
   // Compose prompt for OpenAI
@@ -210,7 +211,7 @@ export const getMovies = async (req, res) => {
       "Sorry, I couldn't get a response. ha";
     res.json({ reply });
   } catch (err) {
-    console.log("OpenAI error:", err.response?.data || err.message || err);
+    logger.error({ err, data: err.response?.data }, "Gemini error");
     res.status(500).json({ reply: "Sorry, I couldn't get a response. ha ha" });
   }
 };

@@ -38,47 +38,25 @@ const SeatLayout = () => {
   };
 
   const handleSeatClick = async (seatId) => {
-    if (!selectedTime) {
-      return toast("Please select a time first");
-    }
-
+    // If seat is already selected, unlock it
     if (selectedSeats.includes(seatId)) {
-      // Unselecting the seat
-      try {
-        const { data } = await axios.post("/api/booking/unlock-seats", {
-          showId: selectedTime.showId,
-          seatId,
-        });
-        if (data.success) {
-          setSelectedSeats((prev) => prev.filter((seat) => seat !== seatId));
-        }
-      } catch (error) {
-        console.error(error);
-      }
+      const token = seatTokens[seatId]; // Access the stored token
+      await axios.post("/api/booking/unlock", {
+        showId,
+        seatId,
+        lockToken: token,
+      });
+      // Remove from state...
     } else {
-      // Selecting the seat
-      if (selectedSeats.length >= 5) {
-        return toast("You can only select up to 5 seats");
-      }
-      if (occupiedSeats.includes(seatId)) {
-        return toast("This Seat is already booked or locked");
-      }
-
-      try {
-        const { data } = await axios.post("/api/booking/lock-seats", {
-          showId: selectedTime.showId,
-          seatId,
-        });
-
-        if (data.success) {
-          setSelectedSeats((prev) => [...prev, seatId]);
-        } else {
-          toast.error(data.message || "Could not lock seat");
-          getOccupiedSeats(); // Refresh to show current status
-        }
-      } catch (error) {
-        console.error(error);
-        toast.error("Error locking seat");
+      // Lock the seat and save the token
+      const { data } = await axios.post("/api/booking/lock", {
+        showId,
+        seatId,
+      });
+      if (data.success) {
+        // SAVE THE TOKEN!
+        setSeatTokens((prev) => ({ ...prev, [seatId]: data.lockToken }));
+        setSelectedSeats((prev) => [...prev, seatId]);
       }
     }
   };

@@ -1,4 +1,5 @@
 import Booking from "../models/booking.model.js";
+import logger from "../config/logger.js";
 import Show from "../models/show.model.js";
 import User from "../models/user.model.js";
 import UpcomingMovie from "../models/upcomingMovie.model.js";
@@ -20,8 +21,8 @@ export const getDashboardData = async (_req, res) => {
 
     const now = new Date().toISOString();
     const [bookings, activeShows, totalUser] = await Promise.all([
-      Booking.find({ isPaid: true }),
-      Show.find({ showDateTime: { $gte: now } }).populate("movie"),
+      Booking.find({ isPaid: true }).select("amount").lean(),
+      Show.find({ showDateTime: { $gte: now } }).populate("movie").lean(),
       User.countDocuments(),
     ]);
 
@@ -37,7 +38,7 @@ export const getDashboardData = async (_req, res) => {
 
     res.json(payload);
   } catch (error) {
-    console.error(error.message);
+    logger.error({ err: error });
     res.json({ success: false, message: error.message });
   }
 };
@@ -47,23 +48,29 @@ export const getAllShows = async (_req, res) => {
     const now = new Date().toISOString();
     const shows = await Show.find({ showDateTime: { $gte: now } })
       .populate("movie")
-      .sort({ showDateTime: 1 });
+      .sort({ showDateTime: 1 })
+      .lean();
     res.json({ success: true, shows });
   } catch (error) {
-    console.error(error.message);
+    logger.error({ err: error });
     res.json({ success: false, message: error.message });
   }
 };
 
-export const getAllBookings = async (_req, res) => {
+export const getAllBookings = async (req, res) => {
   try {
+    const { page = 1, limit = 100 } = req.query;
     const bookings = await Booking.find({})
-      .populate("user")
-      .populate({ path: "show", populate: { path: "movie" } })
-      .sort({ createdAt: -1 });
+      .select("user show amount bookedSeats isPaid createdAt")
+      .populate("user", "name email image")
+      .populate({ path: "show", select: "showDateTime showPrice movie", populate: { path: "movie", select: "title poster_path" } })
+      .sort({ createdAt: -1 })
+      .skip((Number(page) - 1) * Number(limit))
+      .limit(Number(limit))
+      .lean();
     res.json({ success: true, bookings });
   } catch (error) {
-    console.error(error.message);
+    logger.error({ err: error });
     res.json({ success: false, message: error.message });
   }
 };
@@ -77,7 +84,7 @@ export const getNotifyMovies = async (_req, res) => {
     });
     res.json({ success: true, movies });
   } catch (error) {
-    console.error(error.message);
+    logger.error({ err: error });
     res.json({ success: false, message: error.message });
   }
 };

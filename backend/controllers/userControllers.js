@@ -1,4 +1,5 @@
 import { clerkClient } from "@clerk/express";
+import logger from "../config/logger.js";
 import Booking from "../models/booking.model.js";
 import Movie from "../models/movie.model.js";
 import stripe from "stripe";
@@ -18,38 +19,28 @@ export const getUserBookings = async (req, res) => {
       populate: { path: "movie" },
     });
 
-    // Check payment status for unpaid bookings
+    // Check payment status for unpaid bookings — all Stripe calls run in parallel
     const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY);
-    for (const booking of bookings) {
-      if (!booking.isPaid && booking.paymentLink) {
-        try {
-          // Extract session ID from payment link
-          // Format: https://checkout.stripe.com/c/pay/cs_test_...#...
-          const match = booking.paymentLink.match(/cs_(test|live)_[\w]+/);
-          if (match) {
-            const sessionId = match[0];
-            const session =
-              await stripeInstance.checkout.sessions.retrieve(sessionId);
-            if (session.payment_status === "paid") {
-              booking.isPaid = true;
-              booking.paymentLink = "";
-              await booking.save();
-
-              // Send Confirmation email via Inngest
-              await inngest.send({
-                name: "app/show.booked",
-                data: { bookingId: booking._id },
-              });
+    await Promise.all(
+      bookings
+        .filter((b) => !b.isPaid && b.paymentLink)
+        .map(async (booking) => {
+          try {
+            const match = booking.paymentLink.match(/cs_(test|live)_\w+/);
+            if (match) {
+              const session = await stripeInstance.checkout.sessions.retrieve(match[0]);
+              if (session.payment_status === "paid") {
+                booking.isPaid = true;
+                booking.paymentLink = "";
+                await booking.save();
+                await inngest.send({ name: "app/show.booked", data: { bookingId: booking._id } });
+              }
             }
+          } catch (err) {
+            logger.error({ err, bookingId: booking._id }, "Error verifying payment for booking");
           }
-        } catch (err) {
-          console.error(
-            `Error verifying payment for booking ${booking._id}:`,
-            err.message,
-          );
-        }
-      }
-    }
+        })
+    );
 
     const now = new Date();
     const futureBookings = bookings.filter(
@@ -57,7 +48,7 @@ export const getUserBookings = async (req, res) => {
     );
     res.json({ success: true, bookings: futureBookings });
   } catch (error) {
-    console.error(error);
+    logger.error({ err: error });
     res.json({ success: false, message: error.message });
   }
 };
@@ -73,27 +64,19 @@ export const updateFavourite = async (req, res) => {
     }
 
     const user = await clerkClient.users.getUser(userId);
-    // console.log(user.privateMetadata);
+    const favourites = user.privateMetadata.favourite ?? [];
 
-    if (!user.privateMetadata.favourite) {
-      user.privateMetadata.favourite = [];
-    }
-    if (!user.privateMetadata.favourite.includes(movieId)) {
-      await user.privateMetadata.favourite.push(movieId);
-    } else {
-      user.privateMetadata.favourite =
-        await user.privateMetadata.favourite.filter((item) => item !== movieId);
-    }
-    // console.log(user.privateMetadata);
+    const updated = favourites.includes(movieId)
+      ? favourites.filter((item) => item !== movieId)
+      : [...favourites, movieId];
 
     await clerkClient.users.updateUserMetadata(userId, {
-      privateMetadata: user.privateMetadata,
+      privateMetadata: { ...user.privateMetadata, favourite: updated },
     });
-    // console.log(user.privateMetadata);
 
     res.json({ success: true, message: "Favourite updated successfully" });
   } catch (error) {
-    console.error(error);
+    logger.error({ err: error });
     res.json({ success: false, message: error.message });
   }
 };
@@ -107,7 +90,6 @@ export const getFavourite = async (req, res) => {
     }
 
     const user = await clerkClient.users.getUser(userId);
-    // console.log("getfavourites: ", user.privateMetadata);
     const favourites = user.privateMetadata.favourite;
 
     //Get movies from database
@@ -115,7 +97,7 @@ export const getFavourite = async (req, res) => {
 
     res.json({ success: true, movie });
   } catch (error) {
-    console.error(error);
+    logger.error({ err: error });
     res.json({ success: false, message: error.message });
   }
 };

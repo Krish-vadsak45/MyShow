@@ -1,4 +1,5 @@
 import llm from "../config/groq.confing.js";
+import logger from "../config/logger.js";
 import { AgentExecutor, createToolCallingAgent } from "langchain/agents";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { DynamicStructuredTool, DynamicTool } from "@langchain/core/tools";
@@ -9,6 +10,57 @@ import Movie from "../models/movie.model.js";
 import Show from "../models/show.model.js";
 import stripe from "stripe";
 import { inngest } from "../inngest/index.js";
+
+// ─── Security: Pipeline Validation ──────────────────────────────────────────
+const ALLOWED_LOOKUP_COLLECTIONS = new Set([
+  "shows",
+  "movies",
+  "bookings",
+  "upcomingmovies",
+]);
+const BLOCKED_OPERATORS = ["$where", "$function", "$accumulator"];
+const MAX_PIPELINE_RESULTS = 50;
+const SEAT_REGEX = /^[A-J][1-9]$/;
+const MAX_SEATS_PER_BOOKING = 10;
+const MAX_HISTORY_ITEMS = 20;
+const MAX_INPUT_LENGTH = 1000;
+
+function validatePipeline(pipeline, maxLimit = MAX_PIPELINE_RESULTS) {
+  if (!Array.isArray(pipeline) || pipeline.length === 0) {
+    throw new Error("Pipeline must be a non-empty array");
+  }
+
+  const pipelineStr = JSON.stringify(pipeline);
+
+  for (const op of BLOCKED_OPERATORS) {
+    if (pipelineStr.includes(op)) {
+      throw new Error(`Disallowed operator in pipeline: ${op}`);
+    }
+  }
+
+  for (const stage of pipeline) {
+    if (stage.$lookup) {
+      const from = stage.$lookup.from;
+      if (!ALLOWED_LOOKUP_COLLECTIONS.has(from)) {
+        throw new Error(`$lookup to collection "${from}" is not allowed`);
+      }
+    }
+  }
+
+  // Cap or insert $limit
+  let limitIdx = -1;
+  for (let i = pipeline.length - 1; i >= 0; i--) {
+    if ("$limit" in pipeline[i]) { limitIdx = i; break; }
+  }
+  if (limitIdx !== -1) {
+    pipeline[limitIdx].$limit = Math.min(pipeline[limitIdx].$limit, maxLimit);
+  } else {
+    pipeline.push({ $limit: maxLimit });
+  }
+
+  return pipeline;
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Safely extract a JSON array (aggregation pipeline) from model output
 function extractJsonArray(text) {
@@ -41,12 +93,17 @@ function extractJsonArray(text) {
 }
 
 const Agent = async (req, res) => {
-  console.log("Agent called");
   try {
-    console.log(req.body.message);
-    const { message } = req.body;
+    const { message, history } = req.body;
+
+    if (!message || typeof message !== "string" || message.trim().length === 0) {
+      return res.status(400).json({ error: "message is required and must be a non-empty string" });
+    }
+    if (history !== undefined && !Array.isArray(history)) {
+      return res.status(400).json({ error: "history must be an array" });
+    }
+
     const userId = req.userId;
-    console.log("Agent called 2");
 
     const userShowsQueryTool = new DynamicTool({
       name: "query_user_shows",
@@ -54,18 +111,37 @@ const Agent = async (req, res) => {
     Build a MongoDB aggregation pipeline for the "shows" collection.
     Use $lookup to join with "bookings" (field: "show") and "movies" (field: "movie").
     Filter bookings by the current user: "user": "<USER_ID>".
-    NOTE: "show" in bookings is a string, but "_id" in shows is an ObjectId. You may need $toObjectId.
-    Example: "[{\"$lookup\":{\"from\":\"bookings\",\"localField\":\"_id\",\"foreignField\":\"show\",\"as\":\"userBookings\"}},{\"$unwind\":\"$userBookings\"},{\"$match\":{\"userBookings.user\":\"<USER_ID>\"}},{\"$lookup\":{\"from\":\"movies\",\"localField\":\"movie\",\"foreignField\":\"_id\",\"as\":\"movieInfo\"}},{\"$unwind\":\"$movieInfo\"},{\"$project\":{\"_id\":0,\"showDateTime\":1,\"movieTitle\":\"$movieInfo.title\",\"movieGenre\":\"$movieInfo.genres\",\"rating\":\"$movieInfo.vote_average\"}}]"
+    NOTE: "show" in bookings is an ObjectId (same type as "_id" in shows). Direct $lookup works without $toObjectId.
+    Example: "[{\"$lookup\":{\"from\":\"bookings\",\"localField\":\"_id\",\"foreignField\":\"show\",\"as\":\"userBookings\"}},{\"$unwind\":\"$userBookings\"},{\"$match\":{\"userBookings.user\":\"<USER_ID>\"}},{\"$lookup\":{\"from\":\"movies\",\"localField\":\"movie\",\"foreignField\":\"_id\",\"as\":\"movieInfo\"}},{\"$unwind\":\"$movieInfo\"},{\"$project\":{\"_id\":0,\"showDateTime\":1,\"showPrice\":1,\"bookedSeats\":\"$userBookings.bookedSeats\",\"movieTitle\":\"$movieInfo.title\",\"movieGenre\":\"$movieInfo.genres\",\"rating\":\"$movieInfo.vote_average\"}}]"
   `,
       schema: z.string(),
       func: async (pipelineString) => {
         try {
-          const pipeline = extractJsonArray(pipelineString) ?? [];
+          const rawPipeline = extractJsonArray(pipelineString) ?? [];
+          if (rawPipeline.length === 0) return "[]";
+
           const now = new Date();
-          const pStr = JSON.stringify(pipeline)
+          const pStr = JSON.stringify(rawPipeline)
             .replace(/"<USER_ID>"/g, `"${userId}"`)
             .replace(/"<CURRENT_TIME_ISO>"/g, `"${now.toISOString()}"`);
-          const result = await Show.aggregate(JSON.parse(pStr)).exec();
+
+          const replacedPipeline = JSON.parse(pStr);
+
+          // Validate operators, $lookup targets, and $limit cap
+          const safePipeline = validatePipeline(replacedPipeline);
+
+          // Security: ALWAYS inject userId as a hard filter regardless of what
+          // the LLM generated. Insert it right before the final $limit stage so
+          // the userBookings.user field is still present in the document stream.
+          const userMatchStage = { $match: { "userBookings.user": userId } };
+          const limitIdx = safePipeline.findIndex((s) => "$limit" in s);
+          if (limitIdx !== -1) {
+            safePipeline.splice(limitIdx, 0, userMatchStage);
+          } else {
+            safePipeline.push(userMatchStage);
+          }
+
+          const result = await Show.aggregate(safePipeline).exec();
           return JSON.stringify(result);
         } catch (error) {
           return `ERROR: ${error.message}`;
@@ -88,13 +164,19 @@ const Agent = async (req, res) => {
       schema: z.string(),
       func: async (pipelineString) => {
         try {
-          const pipeline = extractJsonArray(pipelineString) ?? [];
+          const rawPipeline = extractJsonArray(pipelineString) ?? [];
+          if (rawPipeline.length === 0) return "[]";
+
           const now = new Date();
-          const pStr = JSON.stringify(pipeline).replace(
+          const pStr = JSON.stringify(rawPipeline).replace(
             /"<CURRENT_TIME_ISO>"/g,
             `"${now.toISOString()}"`,
           );
-          const result = await Show.aggregate(JSON.parse(pStr)).exec();
+
+          const replacedPipeline = JSON.parse(pStr);
+          const safePipeline = validatePipeline(replacedPipeline);
+
+          const result = await Show.aggregate(safePipeline).exec();
           return JSON.stringify(result);
         } catch (error) {
           return `ERROR: ${error.message}`;
@@ -114,13 +196,19 @@ const Agent = async (req, res) => {
       schema: z.string(),
       func: async (pipelineString) => {
         try {
-          const pipeline = extractJsonArray(pipelineString) ?? [];
+          const rawPipeline = extractJsonArray(pipelineString) ?? [];
+          if (rawPipeline.length === 0) return "[]";
+
           const now = new Date();
-          const pStr = JSON.stringify(pipeline).replace(
+          const pStr = JSON.stringify(rawPipeline).replace(
             /"<CURRENT_TIME_ISO>"/g,
             `"${now.toISOString()}"`,
           );
-          const result = await Booking.aggregate(JSON.parse(pStr)).exec();
+
+          const replacedPipeline = JSON.parse(pStr);
+          const safePipeline = validatePipeline(replacedPipeline);
+
+          const result = await Booking.aggregate(safePipeline).exec();
           return JSON.stringify(result);
         } catch (error) {
           return `ERROR: ${error.message}`;
@@ -175,8 +263,12 @@ const Agent = async (req, res) => {
       schema: z.string(),
       func: async (pipelineString) => {
         try {
-          const pipeline = extractJsonArray(pipelineString) ?? [];
-          const result = await Movie.aggregate(pipeline).exec();
+          const rawPipeline = extractJsonArray(pipelineString) ?? [];
+          if (rawPipeline.length === 0) return "[]";
+
+          const safePipeline = validatePipeline(rawPipeline);
+
+          const result = await Movie.aggregate(safePipeline).exec();
           return JSON.stringify(result);
         } catch (error) {
           return `ERROR: ${error.message}`;
@@ -195,13 +287,15 @@ const Agent = async (req, res) => {
       schema: z.string(),
       func: async (pipelineString) => {
         try {
-          const pipeline = extractJsonArray(pipelineString) ?? [];
-          // We need to import the UpcomingMovie model dynamically or ensure it's imported at the top.
-          // Assuming it's imported as UpcomingMovie
+          const rawPipeline = extractJsonArray(pipelineString) ?? [];
+          if (rawPipeline.length === 0) return "[]";
+
+          const safePipeline = validatePipeline(rawPipeline);
+
           const UpcomingMovie = (
             await import("../models/upcomingMovie.model.js")
           ).default;
-          const result = await UpcomingMovie.aggregate(pipeline).exec();
+          const result = await UpcomingMovie.aggregate(safePipeline).exec();
           return JSON.stringify(result);
         } catch (error) {
           return `ERROR: ${error.message}`;
@@ -227,6 +321,25 @@ const Agent = async (req, res) => {
           if (!showId || !seats || seats.length === 0) {
             return "Error: Missing showId or seats.";
           }
+
+          // Validate showId is a 24-char hex ObjectId
+          if (!/^[a-f\d]{24}$/i.test(showId)) {
+            return "Error: Invalid show ID.";
+          }
+
+          // Validate seat count
+          if (seats.length > MAX_SEATS_PER_BOOKING) {
+            return `Error: Cannot book more than ${MAX_SEATS_PER_BOOKING} seats at once.`;
+          }
+
+          // Validate each seat format (A1–J9) and check for duplicates
+          const uniqueSeats = [...new Set(seats)];
+          const invalidSeats = uniqueSeats.filter((s) => !SEAT_REGEX.test(s));
+          if (invalidSeats.length > 0) {
+            return `Error: Invalid seat format: ${invalidSeats.join(", ")}. Use format like A1, E5.`;
+          }
+          // Reassign to deduped list
+          seats = uniqueSeats;
 
           // 1. Atomic Locking (Temporary Booking)
           // Ensure all seats are free and claim them in one atomic operation
@@ -274,11 +387,11 @@ const Agent = async (req, res) => {
             line_items: [
               {
                 price_data: {
-                  currency: "usd", // Adjust currency if needed
+                  currency: "inr",
                   product_data: {
                     name: `${show.movie.title} - Seats: ${seats.join(", ")}`,
                   },
-                  unit_amount: Math.floor(amount * 100), // in cents
+                  unit_amount: Math.floor(amount * 100), // paise (1 INR = 100 paise)
                 },
                 quantity: 1,
               },
@@ -303,7 +416,7 @@ const Agent = async (req, res) => {
 
           return `Booking successful for seats ${seats.join(", ")}! Please make payment here: ${session.url}`;
         } catch (error) {
-          console.error("Booking tool error:", error);
+          logger.error({ err: error }, "Booking tool error");
           return `Booking failed: ${error.message}`;
         }
       },
@@ -336,7 +449,6 @@ const Agent = async (req, res) => {
     Provide specific details: Genres, Ratings, Runtime, and Seat Recommendations (Rows E-G are best).
     Answer in 1-2 clear, helpful sentences. Avoid raw JSON output.
     `;
-    console.log("Agent called 4");
 
     const prompt = ChatPromptTemplate.fromMessages([
       [
@@ -355,32 +467,33 @@ const Agent = async (req, res) => {
       ["human", "{input}"],
       ["placeholder", "{agent_scratchpad}"],
     ]);
-    console.log("Agent called 5");
 
     const agent = await createToolCallingAgent({ llm, tools, prompt });
     const executor = new AgentExecutor({ agent, tools });
-    console.log("Agent called 6");
 
     // Limit message length to avoid context overflow
-    const MAX_INPUT_LENGTH = 1000;
-    const safeMessage =
-      typeof message === "string" && message.length > MAX_INPUT_LENGTH
-        ? message.slice(0, MAX_INPUT_LENGTH)
-        : message;
+    const safeMessage = message.slice(0, MAX_INPUT_LENGTH);
 
-    const chat_history = (req.body.history || []).map((m) => {
-      if (m.role === "user") {
-        return new HumanMessage(m.content);
-      }
-      return new AIMessage(m.content);
-    });
+    const chat_history = (history || [])
+      .filter(
+        (m) =>
+          m &&
+          ["user", "assistant"].includes(m.role) &&
+          typeof m.content === "string",
+      )
+      .slice(-MAX_HISTORY_ITEMS)
+      .map((m) => {
+        const safeContent = m.content.slice(0, MAX_INPUT_LENGTH);
+        return m.role === "user"
+          ? new HumanMessage(safeContent)
+          : new AIMessage(safeContent);
+      });
 
     const result = await executor.invoke({
       input: safeMessage,
       chat_history: chat_history,
     });
-    console.log("Agent called 7");
-    console.log("Agent result:", result);
+    logger.info({ answer: result.output }, "Agent result");
 
     // Try to parse the output as JSON, else fallback to plain output
     let answer = result.output;
@@ -473,7 +586,7 @@ const Agent = async (req, res) => {
       answer: prettified || answer,
     });
   } catch (err) {
-    console.error("Agent error:", err);
+    logger.error({ err }, "Agent error");
     return res.status(500).json({ error: err.message });
   }
 };
