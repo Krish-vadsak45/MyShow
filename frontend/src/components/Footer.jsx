@@ -363,3 +363,5 @@ const ResponsiveFooter = memo(() => {
     </footer>
   );
 });
+
+export default ResponsiveFooter;
