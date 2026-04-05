@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -70,22 +70,48 @@ const MovieFilter = () => {
   );
 
   // Derive all filter state from URL params
-  const selectedGenres = searchParams.get("genres")
-    ? searchParams.get("genres").split(",")
-    : [];
-  const selectedLanguageCodes = searchParams.get("languages")
-    ? searchParams.get("languages").split(",")
-    : [];
-  const selectedLanguages = selectedLanguageCodes
-    .map((code) => reverseLanguageMap[code])
-    .filter(Boolean);
-  const dateFrom = searchParams.get("dateFrom")
-    ? new Date(searchParams.get("dateFrom"))
-    : undefined;
-  const dateTo = searchParams.get("dateTo")
-    ? new Date(searchParams.get("dateTo"))
-    : undefined;
-  const currentPage = parseInt(searchParams.get("page") || "1");
+  const selectedGenres = useMemo(
+    () =>
+      searchParams.get("genres") ? searchParams.get("genres").split(",") : [],
+    [searchParams],
+  );
+
+  const selectedLanguageCodes = useMemo(
+    () =>
+      searchParams.get("languages")
+        ? searchParams.get("languages").split(",")
+        : [],
+    [searchParams],
+  );
+
+  const selectedLanguages = useMemo(
+    () =>
+      selectedLanguageCodes
+        .map((code) => reverseLanguageMap[code])
+        .filter(Boolean),
+    [selectedLanguageCodes],
+  );
+
+  const dateFrom = useMemo(
+    () =>
+      searchParams.get("dateFrom")
+        ? new Date(searchParams.get("dateFrom"))
+        : undefined,
+    [searchParams],
+  );
+
+  const dateTo = useMemo(
+    () =>
+      searchParams.get("dateTo")
+        ? new Date(searchParams.get("dateTo"))
+        : undefined,
+    [searchParams],
+  );
+
+  const currentPage = useMemo(
+    () => Number.parseInt(searchParams.get("page") || "1", 10),
+    [searchParams],
+  );
 
   // Debounce search input → URL param
   useEffect(() => {
@@ -102,7 +128,7 @@ const MovieFilter = () => {
       });
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchInput]);
+  }, [searchInput, setSearchParams]);
 
   // Fetch movies whenever URL params change
   useEffect(() => {
@@ -138,54 +164,77 @@ const MovieFilter = () => {
     };
 
     fetchMovies();
-  }, [searchParams]);
+  }, [
+    searchParams,
+    axios,
+    currentPage,
+    selectedGenres,
+    selectedLanguageCodes,
+    dateFrom,
+    dateTo,
+  ]);
 
-  const updateFilterParam = (key, value) => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      if (value) {
-        next.set(key, value);
-      } else {
-        next.delete(key);
-      }
-      next.set("page", "1");
-      return next;
-    });
-  };
+  const updateFilterParam = useCallback(
+    (key, value) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) {
+          next.set(key, value);
+        } else {
+          next.delete(key);
+        }
+        next.set("page", "1");
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
 
-  const setPage = (page) => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.set("page", page.toString());
-      return next;
-    });
-  };
+  const setPage = useCallback(
+    (page) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("page", page.toString());
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
 
-  const handleGenreChange = (genre, checked) => {
-    const next = checked
-      ? [...selectedGenres, genre]
-      : selectedGenres.filter((g) => g !== genre);
-    updateFilterParam("genres", next.join(","));
-  };
+  const handleGenreChange = useCallback(
+    (genre, checked) => {
+      const next = checked
+        ? [...selectedGenres, genre]
+        : selectedGenres.filter((g) => g !== genre);
+      updateFilterParam("genres", next.join(","));
+    },
+    [selectedGenres, updateFilterParam],
+  );
 
-  const handleLanguageChange = (language, checked) => {
-    const code = languageMap[language];
-    const next = checked
-      ? [...selectedLanguageCodes, code]
-      : selectedLanguageCodes.filter((c) => c !== code);
-    updateFilterParam("languages", next.join(","));
-  };
+  const handleLanguageChange = useCallback(
+    (language, checked) => {
+      const code = languageMap[language];
+      const next = checked
+        ? [...selectedLanguageCodes, code]
+        : selectedLanguageCodes.filter((c) => c !== code);
+      updateFilterParam("languages", next.join(","));
+    },
+    [selectedLanguageCodes, updateFilterParam],
+  );
 
-  const clearAllFilters = () => {
+  const clearAllFilters = useCallback(() => {
     setSearchInput("");
     setSearchParams({});
-  };
+  }, [setSearchParams]);
 
-  const activeFiltersCount =
-    selectedGenres.length +
-    selectedLanguages.length +
-    (dateFrom ? 1 : 0) +
-    (dateTo ? 1 : 0);
+  const activeFiltersCount = useMemo(
+    () =>
+      selectedGenres.length +
+      selectedLanguages.length +
+      (dateFrom ? 1 : 0) +
+      (dateTo ? 1 : 0),
+    [selectedGenres, selectedLanguages, dateFrom, dateTo],
+  );
 
   return (
     <div className="flex justify-end">
@@ -419,63 +468,103 @@ const MovieFilter = () => {
         </div>
 
         {/* Movie Grid */}
-        {loading ? (
-          <div className="flex flex-col items-center md:flex-row flex-wrap gap-8">
-            {[...Array(8)].map((_, i) => (
-              <MovieCardSkeleton key={i} />
-            ))}
-          </div>
-        ) : movies.length > 0 ? (
-          <>
-            <div className="flex flex-col items-center md:flex-row flex-wrap gap-8">
-              {movies.map((movie) => (
-                <MovieCard movie={movie} key={movie._id} />
-              ))}
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-4 mt-10">
-                <Button
-                  variant="outline"
-                  className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700 disabled:opacity-50 cursor-pointer"
-                  onClick={() => setPage(currentPage - 1)}
-                  disabled={currentPage <= 1}
-                >
-                  <ChevronLeft className="w-4 h-4 mr-1" /> Prev
-                </Button>
-                <span className="text-gray-400 text-sm">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700 disabled:opacity-50 cursor-pointer"
-                  onClick={() => setPage(currentPage + 1)}
-                  disabled={currentPage >= totalPages}
-                >
-                  Next <ChevronRight className="w-4 h-4 ml-1" />
-                </Button>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="text-center py-12">
-            <div className="text-gray-400 text-lg mb-4">No movies found</div>
-            <p className="text-gray-500 mb-6">
-              Try adjusting your filters or search terms
-            </p>
-            <Button
-              onClick={clearAllFilters}
-              variant="outline"
-              className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700 hover:text-white cursor-pointer"
-            >
-              Clear All Filters
-            </Button>
-          </div>
-        )}
+        <MovieGrid
+          loading={loading}
+          movies={movies}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          setPage={setPage}
+          clearAllFilters={clearAllFilters}
+        />
       </div>
     </div>
   );
+};
+
+const MovieGrid = ({
+  loading,
+  movies,
+  currentPage,
+  totalPages,
+  setPage,
+  clearAllFilters,
+}) => {
+  const skeletonItems = useMemo(
+    () => new Array(8).fill(null).map((_, i) => ({ id: i })),
+    [],
+  );
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center md:flex-row flex-wrap gap-8">
+        {skeletonItems.map((item) => (
+          <MovieCardSkeleton key={item.id} />
+        ))}
+      </div>
+    );
+  }
+
+  if (movies.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-gray-400 text-lg mb-4">No movies found</div>
+        <p className="text-gray-500 mb-6">
+          Try adjusting your filters or search terms
+        </p>
+        <Button
+          onClick={clearAllFilters}
+          variant="outline"
+          className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700 hover:text-white cursor-pointer"
+        >
+          Clear All Filters
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="flex flex-col items-center md:flex-row flex-wrap gap-8">
+        {movies.map((movie) => (
+          <MovieCard movie={movie} key={movie._id} />
+        ))}
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 mt-10">
+          <Button
+            variant="outline"
+            className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700 disabled:opacity-50 cursor-pointer"
+            onClick={() => setPage(currentPage - 1)}
+            disabled={currentPage <= 1}
+          >
+            <ChevronLeft className="w-4 h-4 mr-1" /> Prev
+          </Button>
+          <span className="text-gray-400 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700 disabled:opacity-50 cursor-pointer"
+            onClick={() => setPage(currentPage + 1)}
+            disabled={currentPage >= totalPages}
+          >
+            Next <ChevronRight className="w-4 h-4 ml-1" />
+          </Button>
+        </div>
+      )}
+    </>
+  );
+};
+
+MovieGrid.propTypes = {
+  loading: PropTypes.bool.isRequired,
+  movies: PropTypes.array.isRequired,
+  currentPage: PropTypes.number.isRequired,
+  totalPages: PropTypes.number.isRequired,
+  setPage: PropTypes.func.isRequired,
+  clearAllFilters: PropTypes.func.isRequired,
 };
 
 export default MovieFilter;

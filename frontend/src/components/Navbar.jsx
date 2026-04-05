@@ -1,11 +1,20 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, memo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Search, Menu, X, TicketPlus } from "lucide-react";
 import { assets } from "../assets/assets";
 import { useUser, useClerk, UserButton } from "@clerk/clerk-react";
 import { useAppContext } from "../context/AppContext";
 
-const Navbar = () => {
+const navigationItems = [
+  { name: "Home", path: "/" },
+  { name: "Movies", path: "/movies?page=1" },
+  { name: "Theatres", path: "/theatres" },
+  { name: "Releases", path: "/upcoming" },
+  { name: "Favourite", path: "/favourite" },
+  { name: "About Us", path: "/aboutus" },
+];
+
+const Navbar = memo(() => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
   const { user } = useUser();
@@ -15,18 +24,9 @@ const Navbar = () => {
 
   const { favouriteMovies } = useAppContext();
 
-  const navigationItems = [
-    { name: "Home", path: "/" },
-    { name: "Movies", path: "/movies?page=1" },
-    { name: "Theatres", path: "/theatres" },
-    { name: "Releases", path: "/upcoming" },
-    { name: "Favourite", path: "/favourite" },
-    { name: "About Us", path: "/aboutus" },
-  ];
-
-  const isActive = (path) => {
+  const isActive = useCallback((path) => {
     return location.pathname === path;
-  };
+  }, [location.pathname]);
 
   return (
     <nav className="bg-transparent fixed top-0 left-0 w-[100vw] z-50">
@@ -151,6 +151,6 @@ const Navbar = () => {
       </div>
     </nav>
   );
-};
+});
 
 export default Navbar;

@@ -18,7 +18,6 @@ const FeaturedSection = () => {
         <button
           onClick={() => {
             navigate("/movies");
-            scrollTo(0, 0);
           }}
           className="group flex items-center gap-2 text-sm text-gray-300 cursor-pointer"
         >

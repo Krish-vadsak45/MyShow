@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Loading from "../components/Loading";
 import BlurCircle from "../components/BlurCircle";
 import timeFormat from "../lib/timeFormat";
@@ -10,35 +10,37 @@ import NotExist from "../components/NotExist";
 import { Calendar, Eye } from "lucide-react";
 import MovieTicketUi from "../components/MovieTicketUi";
 
+const currency = import.meta.env.VITE_CURRENCY;
+
 const MyBookings = () => {
   const { axios, user, image_base_url } = useAppContext();
   const [selectedBooking, setSelectedBooking] = useState(null);
 
-  const currency = import.meta.env.VITE_CURRENCY;
   const [bookings, setBookings] = useState([]);
   const [isloading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  const getMyBookings = async () => {
+  const getMyBookings = useCallback(async () => {
     try {
       const { data } = await axios.get("/api/user/bookings");
       if (data.success) {
-        // console.log(data.bookings);
         setBookings(data.bookings);
       }
     } catch (error) {
       console.error(error);
     }
     setIsLoading(false);
-  };
+  }, [axios]);
+
   useEffect(() => {
     if (user) {
       getMyBookings();
     }
-  }, [user]);
-  const handleViewTicket = (booking) => {
+  }, [user, getMyBookings]);
+
+  const handleViewTicket = useCallback((booking) => {
     setSelectedBooking(booking);
-  };
+  }, []);
 
   if (!isloading && bookings.length === 0) {
     return (
@@ -59,16 +61,16 @@ const MyBookings = () => {
         <BlurCircle bottom="0px" left="600px" />
       </div>
       <h1 className="text-lg font-semibold mb-4">My Bookings</h1>
-      {bookings.map((item, index) => (
+      {bookings.map((item) => (
         <div
-          key={index}
+          key={item._id}
           className="flex flex-col md:flex-row justify-between
         bg-primary/8 border border-primary/20 mt-4 p-2 rounded-lg max-w-3x1"
         >
           <div className="flex flex-col md:flex-row">
             <img
               src={image_base_url + item.show.movie.poster_path}
-              alt=""
+              alt={item.show.movie.title}
               className="md:max-w-45
         aspect-video h-auto object-cover object-bottom rounded"
             />

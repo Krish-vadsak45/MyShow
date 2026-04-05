@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -6,7 +6,9 @@ import toast from "react-hot-toast";
 
 // Global axios config — cookies sent on every request, no manual headers needed
 axios.defaults.withCredentials = true;
-axios.defaults.baseURL = import.meta.env.DEV ? "" : import.meta.env.VITE_BASE_URL;
+axios.defaults.baseURL = import.meta.env.DEV
+  ? ""
+  : import.meta.env.VITE_BASE_URL;
 
 export const AppContext = createContext();
 
@@ -14,7 +16,7 @@ export const AppProvider = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(null);
   const [shows, setShows] = useState([]);
   const [recommendationShows, setRecommendationShows] = useState([]);
-  const [favouriteMovies, setFavouriteMovie] = useState([]);
+  const [favouriteMovies, setFavouriteMovies] = useState([]);
   // user is only set AFTER the session cookie is established
   const [user, setUser] = useState(null);
 
@@ -47,10 +49,19 @@ export const AppProvider = ({ children }) => {
       return;
     }
 
-    (async () => {
-      const ok = await syncSessionCookie();
-      if (ok) setUser(clerkUser);
-    })();
+    const establishSession = async () => {
+      try {
+        const ok = await syncSessionCookie();
+        if (ok) {
+          // Set user only AFTER cookie is confirmed set
+          setUser(clerkUser);
+        }
+      } catch (err) {
+        console.error("Session sync failed", err);
+      }
+    };
+
+    establishSession();
   }, [isLoaded, isSignedIn, clerkUser]);
 
   // Keep the cookie fresh — Clerk JWTs expire in 60 s
@@ -101,7 +112,7 @@ export const AppProvider = ({ children }) => {
     try {
       const { data } = await axios.get("/api/user/favourites");
       if (data.success) {
-        setFavouriteMovie(data.movie);
+        setFavouriteMovies(data.movie); // Use the corrected setter name
       } else {
         toast.error(data.message);
       }
@@ -119,22 +130,29 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     if (user) {
       fetchIsAdmin();
+      fetchRecommendations();
+      fetchFavouriteMovies();
+    } else {
+      setRecommendationShows([]); // Clear when logged out
     }
   }, [user]);
 
-  const value = {
-    axios,
-    fetchIsAdmin,
-    user,
-    navigate,
-    isAdmin,
-    shows,
-    favouriteMovies,
-    fetchFavouriteMovies,
-    image_base_url,
-    fetchRecommendations,
-    recommendationShows,
-  };
+  const value = useMemo(
+    () => ({
+      axios,
+      fetchIsAdmin,
+      user,
+      navigate,
+      isAdmin,
+      shows,
+      favouriteMovies,
+      fetchFavouriteMovies,
+      image_base_url,
+      fetchRecommendations,
+      recommendationShows,
+    }),
+    [user, isAdmin, shows, favouriteMovies, recommendationShows],
+  );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };

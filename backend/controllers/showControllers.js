@@ -4,11 +4,13 @@ import Movie from "../models/movie.model.js";
 import Show from "../models/show.model.js";
 import UpcomingMovie from "../models/upcomingMovie.model.js";
 import { inngest } from "../inngest/index.js";
-import redis, { getCachedData } from "../config/redis.js";
+import redis, { getCachedData, getOrSetCache } from "../config/redis.js";
 import z from "zod";
 
 const SHOWS_CACHE_TTL = 10 * 60; // 10 minutes
 const SHOW_DETAIL_CACHE_TTL = 10 * 60;
+const NOW_PLAYING_CACHE_KEY = "movies:now_playing";
+const NOW_PLAYING_CACHE_TTL = 6 * 60 * 60; // 6 hours
 
 // Helper to add jitter to TTL (±30s) to prevent cache stampede
 const withJitter = (seconds) => seconds + Math.floor(Math.random() * 60 - 30);
@@ -64,14 +66,23 @@ const invalidateShowsCache = async () => {
 // API to get now playing movies from TMDB API
 export const getNowPlayingMovies = async (_req, res) => {
   try {
-    const { data } = await axios.get(
-      "https://api.themoviedb.org/3/movie/now_playing",
-      {
-        accept: "application/json",
-        headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
-      },
+    const fetchFresh = async () => {
+      const { data } = await axios.get(
+        "https://api.themoviedb.org/3/movie/now_playing",
+        {
+          accept: "application/json",
+          headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
+        },
+      );
+      return { success: true, movies: data.results };
+    };
+
+    const payload = await getOrSetCache(
+      NOW_PLAYING_CACHE_KEY,
+      fetchFresh,
+      NOW_PLAYING_CACHE_TTL,
     );
-    res.json({ success: true, movies: data.results });
+    res.json(payload);
   } catch (error) {
     logger.error({ err: error });
     res.json({ success: false, message: error.message });
@@ -297,33 +308,46 @@ export const getShows = async (req, res) => {
 export const getShow = async (req, res) => {
   try {
     const { movieId } = req.params;
-    const cacheKey = `show:detail:${movieId}`;
 
-    const cached = await getCachedData(cacheKey);
-    if (cached) {
-      return res.json(cached);
+    // 1. Validation First: Strict Object ID check
+    if (!OBJECT_ID_REGEX.test(movieId)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid movie ID format" });
     }
 
-    const now = new Date();
-    const [shows, movie] = await Promise.all([
-      Show.find({ movie: movieId, showDateTime: { $gte: now } }),
-      Movie.findById(movieId),
-    ]);
+    const cacheKey = `show:detail:${movieId}`;
 
-    const dateTime = {};
-    shows.forEach((show) => {
-      const date = new Date(show.showDateTime).toISOString().split("T")[0];
-      if (!dateTime[date]) dateTime[date] = [];
-      dateTime[date].push({ time: show.showDateTime, showId: show._id });
-    });
+    const fetchFresh = async () => {
+      const now = new Date();
+      const [shows, movie] = await Promise.all([
+        Show.find({ movie: movieId, showDateTime: { $gte: now } }),
+        Movie.findById(movieId),
+      ]);
 
-    const payload = { success: true, movie, dateTime };
-    await redis.set(
+      if (!movie) return null; // Triggers "NF" caching in getOrSetCache
+
+      const dateTime = {};
+      shows.forEach((show) => {
+        const date = new Date(show.showDateTime).toISOString().split("T")[0];
+        if (!dateTime[date]) dateTime[date] = [];
+        dateTime[date].push({ time: show.showDateTime, showId: show._id });
+      });
+
+      return { success: true, movie, dateTime };
+    };
+
+    const payload = await getOrSetCache(
       cacheKey,
-      JSON.stringify(payload),
-      "EX",
+      fetchFresh,
       withJitter(SHOW_DETAIL_CACHE_TTL),
     );
+
+    if (!payload) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Movie not found" });
+    }
 
     res.json(payload);
   } catch (error) {

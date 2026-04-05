@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo, useCallback } from "react";
 import {
   ArrowRight,
   Mail,
@@ -16,58 +16,58 @@ import {
 import { assets } from "@/assets/assets";
 import { Link, useNavigate } from "react-router-dom";
 
-export default function ResponsiveFooter() {
+const footerLinks = {
+  quickShow: [
+    { name: "Home", path: "/" },
+    { name: "Movies", path: "/movies" },
+    { name: "Theatres", path: "/theatres" },
+    { name: "Releases", path: "/releases" },
+    { name: "Favourite", path: "/favourite" },
+    { name: "About Us", path: "/aboutus" },
+  ],
+  genres: [
+    { name: "Action" },
+    { name: "Drama" },
+    { name: "Comedy" },
+    { name: "Family" },
+    { name: "Adventure" },
+    { name: "Thriller" },
+  ],
+  movies: [
+    { name: "", href: "" },
+    { name: "Popular Movies", href: "/popular" },
+    { name: "Top Rated", href: "/top-rated" },
+    { name: "Coming Soon", href: "/coming-soon" },
+  ],
+  support: [
+    { name: "Our Story", href: "#ourstory" },
+    { name: "Contact Us", href: "#contact/report" },
+    { name: "FAQ", href: "#faq" },
+    { name: "Report Issue", href: "#contact/report" },
+  ],
+};
+
+const socialLinks = [
+  {
+    name: "Github",
+    icon: GithubIcon,
+    href: "https://github.com/Krish-vadsak45",
+  },
+  { name: "Twitter", icon: Twitter, href: "https://twitter.com/myshows" },
+  {
+    name: "Linkedin",
+    icon: LinkedinIcon,
+    href: "https://www.linkedin.com/in/krish-vadsak-a5bab427b/",
+  },
+  { name: "YouTube", icon: Youtube, href: "https://youtube.com/myshows" },
+];
+
+const ResponsiveFooter = memo(() => {
   const [email, setEmail] = useState("");
   const [isSubscribed, setIsSubscribed] = useState(false);
   const navigate = useNavigate();
 
   const currentYear = new Date().getFullYear();
-
-  const footerLinks = {
-    quickShow: [
-      { name: "Home", path: "/" },
-      { name: "Movies", path: "/movies" },
-      { name: "Theatres", path: "/theatres" },
-      { name: "Releases", path: "/releases" },
-      { name: "Favourite", path: "/favourite" },
-      { name: "About Us", path: "/aboutus" },
-    ],
-    genres: [
-      { name: "Action" },
-      { name: "Drama" },
-      { name: "Comedy" },
-      { name: "Family" },
-      { name: "Adventure" },
-      { name: "Thriller" },
-    ],
-    movies: [
-      { name: "", href: "" },
-      { name: "Popular Movies", href: "/popular" },
-      { name: "Top Rated", href: "/top-rated" },
-      { name: "Coming Soon", href: "/coming-soon" },
-    ],
-    support: [
-      { name: "Our Story", href: "#ourstory" },
-      { name: "Contact Us", href: "#contact/report" },
-      { name: "FAQ", href: "#faq" },
-      { name: "Report Issue", href: "#contact/report" },
-    ],
-  };
-
-  const socialLinks = [
-    {
-      name: "Github",
-      icon: GithubIcon,
-      href: "https://github.com/Krish-vadsak45",
-    },
-    { name: "Twitter", icon: Twitter, href: "https://twitter.com/myshows" },
-    {
-      name: "Linkedin",
-      icon: LinkedinIcon,
-      href: "https://www.linkedin.com/in/krish-vadsak-a5bab427b/",
-    },
-    { name: "YouTube", icon: Youtube, href: "https://youtube.com/myshows" },
-  ];
 
   const handleNewsletterSubmit = (e) => {
     e.preventDefault();
@@ -78,9 +78,12 @@ export default function ResponsiveFooter() {
     }
   };
 
-  const isActive = (path) => {
-    return location.pathname === path;
-  };
+  const isActive = useCallback(
+    (path) => {
+      return location.pathname === path;
+    },
+    [location.pathname],
+  );
 
   return (
     <footer className="text-white border-t border-gray-800">
@@ -359,4 +362,4 @@ export default function ResponsiveFooter() {
       </div>
     </footer>
   );
-}
+});

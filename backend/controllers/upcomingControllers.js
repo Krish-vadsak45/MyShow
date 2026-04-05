@@ -2,74 +2,77 @@ import axios from "axios";
 import logger from "../config/logger.js";
 import UpcomingMovie from "../models/upcomingMovie.model.js";
 import sendEmail from "../config/nodeMailer.js";
-import redis from "../config/redis.js";
+import redis, { getOrSetCache } from "../config/redis.js";
 
 const UPCOMING_CACHE_KEY = "upcoming:movies";
 const UPCOMING_CACHE_TTL = 60 * 60; // 1 hour
 
 export const fetchUpcoming = async (_req, res) => {
   try {
-    // Serve from Redis cache if still fresh
-    const cached = await redis.get(UPCOMING_CACHE_KEY);
-    if (cached) {
-      return res.json(JSON.parse(cached));
-    }
+    const fetchFresh = async () => {
+      const today = new Date();
+      const from = new Date(today);
+      from.setDate(from.getDate() + 1);
+      const to = new Date(today);
+      to.setDate(to.getDate() + 10);
 
-    const today = new Date();
-    const from = new Date(today);
-    from.setDate(from.getDate() + 1);
-    const to = new Date(today);
-    to.setDate(to.getDate() + 10);
+      const url = `https://api.themoviedb.org/3/discover/movie?primary_release_date.gte=${from
+        .toISOString()
+        .slice(0, 10)}&primary_release_date.lte=${to
+        .toISOString()
+        .slice(0, 10)}`;
 
-    const url = `https://api.themoviedb.org/3/discover/movie?primary_release_date.gte=${from
-      .toISOString()
-      .slice(0, 10)}&primary_release_date.lte=${to.toISOString().slice(0, 10)}`;
-
-    const [{ data }, dbMovies] = await Promise.all([
-      axios.get(url, {
-        headers: {
-          Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
-          accept: "application/json",
-        },
-      }),
-      UpcomingMovie.find(
-        { releaseDate: { $gte: from, $lte: to } },
-        { tmdbId: 1, notifyUsers: 1 }
-      ),
-    ]);
-
-    const notifyMap = new Map(dbMovies.map((m) => [m.tmdbId, m.notifyUsers.length]));
-
-    if (data.results.length > 0) {
-      await UpcomingMovie.bulkWrite(
-        data.results.map((m) => ({
-          updateOne: {
-            filter: { tmdbId: m.id },
-            update: {
-              $setOnInsert: {
-                tmdbId: m.id,
-                title: m.title,
-                posterPath: m.poster_path,
-                releaseDate: m.release_date,
-              },
-            },
-            upsert: true,
+      const [{ data }, dbMovies] = await Promise.all([
+        axios.get(url, {
+          headers: {
+            Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
+            accept: "application/json",
           },
-        }))
+        }),
+        UpcomingMovie.find(
+          { releaseDate: { $gte: from, $lte: to } },
+          { tmdbId: 1, notifyUsers: 1 },
+        ),
+      ]);
+
+      const notifyMap = new Map(
+        dbMovies.map((m) => [m.tmdbId, m.notifyUsers.length]),
       );
-    }
 
-    const result = data.results.map((m) => ({
-      tmdbId: m.id,
-      title: m.title,
-      posterPath: m.poster_path,
-      releaseDate: m.release_date,
-      notifyCount: notifyMap.get(m.id) ?? 0,
-    }));
+      if (data.results.length > 0) {
+        await UpcomingMovie.bulkWrite(
+          data.results.map((m) => ({
+            updateOne: {
+              filter: { tmdbId: m.id },
+              update: {
+                $setOnInsert: {
+                  tmdbId: m.id,
+                  title: m.title,
+                  posterPath: m.poster_path,
+                  releaseDate: m.release_date,
+                },
+              },
+              upsert: true,
+            },
+          })),
+        );
+      }
 
-    await redis.set(UPCOMING_CACHE_KEY, JSON.stringify(result), "EX", UPCOMING_CACHE_TTL);
+      return data.results.map((m) => ({
+        tmdbId: m.id,
+        title: m.title,
+        posterPath: m.poster_path,
+        releaseDate: m.release_date,
+        notifyCount: notifyMap.get(m.id) ?? 0,
+      }));
+    };
 
-    res.json(result);
+    const finalResult = await getOrSetCache(
+      UPCOMING_CACHE_KEY,
+      fetchFresh,
+      UPCOMING_CACHE_TTL,
+    );
+    res.json(finalResult);
   } catch (err) {
     logger.error({ err }, "fetchUpcoming error");
     res.status(500).json({ success: false, message: err.message });
@@ -132,7 +135,9 @@ export const adminList = async (_req, res) => {
 
 export const notifyUsers = async (tmdbId) => {
   try {
-    const movie = await UpcomingMovie.findOne({ tmdbId }).populate("notifyUsers");
+    const movie = await UpcomingMovie.findOne({ tmdbId }).populate(
+      "notifyUsers",
+    );
     if (!movie || movie.notified) return;
     for (const user of movie.notifyUsers) {
       await sendEmail({

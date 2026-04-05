@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useEffect, useState, useCallback, useMemo, memo } from "react";
+import PropTypes from "prop-types";
+import { useParams } from "react-router-dom";
 import { SeatLayoutSkeleton } from "../components/skeletons";
 import { ClockIcon, ArrowRightIcon } from "lucide-react";
 import IsoTimeFormat from "../lib/IsoTimeFormat";
@@ -8,23 +9,46 @@ import { assets } from "../assets/assets";
 import toast from "react-hot-toast";
 import { useAppContext } from "../context/AppContext";
 
+const Seat = memo(({ seatId, isSelected, isOccupied, onClick }) => {
+  return (
+    <button
+      onClick={() => onClick(seatId)}
+      className={` h-8 w-8 rounded border border-primary/60 cursor-pointer 
+      ${isSelected && "bg-primary text-white"}
+      ${isOccupied && "opacity-50"} `}
+    >
+      {seatId}
+    </button>
+  );
+});
+
+Seat.propTypes = {
+  seatId: PropTypes.string.isRequired,
+  isSelected: PropTypes.bool,
+  isOccupied: PropTypes.bool,
+  onClick: PropTypes.func.isRequired,
+};
+
 const SeatLayout = () => {
   const { id, date } = useParams();
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [selectedTime, setSelectedTime] = useState(null);
   const [show, setShow] = useState(null);
   const [occupiedSeats, setOccupiedSeats] = useState([]);
-  const navigate = useNavigate();
+  const [seatTokens, setSeatTokens] = useState({});
 
   const { axios, user } = useAppContext();
 
-  const groupRows = [
-    ["A", "B"],
-    ["C", "D"],
-    ["E", "F"],
-    ["G", "H"],
-    ["I", "J"],
-  ];
+  const groupRows = useMemo(
+    () => [
+      ["A", "B"],
+      ["C", "D"],
+      ["E", "F"],
+      ["G", "H"],
+      ["I", "J"],
+    ],
+    [],
+  );
 
   const getShow = async () => {
     try {
@@ -37,49 +61,53 @@ const SeatLayout = () => {
     }
   };
 
-  const handleSeatClick = async (seatId) => {
-    // If seat is already selected, unlock it
-    if (selectedSeats.includes(seatId)) {
-      const token = seatTokens[seatId]; // Access the stored token
-      await axios.post("/api/booking/unlock", {
-        showId,
-        seatId,
-        lockToken: token,
-      });
-      // Remove from state...
-    } else {
-      // Lock the seat and save the token
-      const { data } = await axios.post("/api/booking/lock", {
-        showId,
-        seatId,
-      });
-      if (data.success) {
-        // SAVE THE TOKEN!
-        setSeatTokens((prev) => ({ ...prev, [seatId]: data.lockToken }));
-        setSelectedSeats((prev) => [...prev, seatId]);
+  const handleSeatClick = useCallback(
+    async (seatId) => {
+      // If seat is already selected, unlock it
+      if (selectedSeats.includes(seatId)) {
+        const token = seatTokens[seatId]; // Access the stored token
+        await axios.post("/api/booking/unlock", {
+          showId: id,
+          seatId,
+          lockToken: token,
+        });
+        setSelectedSeats((prev) => prev.filter((s) => s !== seatId));
+      } else {
+        // Lock the seat and save the token
+        const { data } = await axios.post("/api/booking/lock", {
+          showId: id,
+          seatId,
+        });
+        if (data.success) {
+          // SAVE THE TOKEN!
+          setSeatTokens((prev) => ({ ...prev, [seatId]: data.lockToken }));
+          setSelectedSeats((prev) => [...prev, seatId]);
+        }
       }
-    }
-  };
+    },
+    [selectedSeats, seatTokens, axios, id],
+  );
 
-  const renderSeats = (row, count = 9) => (
-    <div key={row} className="flex gap-2 mt-2">
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        {Array.from({ length: count }, (_, i) => {
-          const seatId = `${row}${i + 1}`;
-          return (
-            <button
-              key={seatId}
-              onClick={() => handleSeatClick(seatId)}
-              className={` h-8 w-8 rounded border border-primary/60 cursor-pointer 
-              ${selectedSeats.includes(seatId) && "bg-primary text-white"}
-              ${occupiedSeats.includes(seatId) && "opacity-50"} `}
-            >
-              {seatId}
-            </button>
-          );
-        })}
+  const renderSeats = useCallback(
+    (row, count = 9) => (
+      <div key={row} className="flex gap-2 mt-2">
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {Array.from({ length: count }, (_, i) => {
+            const seatId = `${row}${i + 1}`;
+            return (
+              <Seat
+                key={seatId}
+                seatId={seatId}
+                isSelected={selectedSeats.includes(seatId)}
+                isOccupied={occupiedSeats.includes(seatId)}
+                onClick={handleSeatClick}
+              />
+            );
+          })}
+        </div>
       </div>
-    </div>
+    ),
+    [selectedSeats, occupiedSeats, handleSeatClick],
   );
 
   const getOccupiedSeats = async () => {
@@ -93,7 +121,9 @@ const SeatLayout = () => {
       } else {
         toast.error(data.messge);
       }
-    } catch (error) {}
+    } catch (error) {
+      console.error("Failed to fetch occupied seats:", error);
+    }
   };
 
   const bookTickets = async () => {
@@ -109,12 +139,12 @@ const SeatLayout = () => {
         selectedSeats,
       });
       if (data.success) {
-        window.location.href = data.url;
+        globalThis.location.href = data.url;
       } else {
         toast.error(data.message);
       }
     } catch (error) {
-      toast.error(error.messge);
+      toast.error(error.message);
     }
   };
 
@@ -128,7 +158,11 @@ const SeatLayout = () => {
     }
   }, [selectedTime]);
 
-  return show ? (
+  if (!show) {
+    return <SeatLayoutSkeleton />;
+  }
+
+  return (
     <div
       className="flex flex-col md:flex-row px-6 md:px-16 lg:px-40 py-30
         md: pt-50"
@@ -141,10 +175,10 @@ const SeatLayout = () => {
         <p className="text-lg font-semibold px-6">Available Timings</p>
         <div className="mt-5 space-y-1">
           {show.dateTime[date].map((item) => (
-            <div
+            <button
               key={item.time}
               onClick={() => setSelectedTime(item)}
-              className={`flex items-center gap-2 px-6 py-2 w-max rounded-r-md cursor-pointer transition ${
+              className={`flex items-center gap-2 px-6 py-2 w-full text-left rounded-r-md transition ${
                 selectedTime?.time === item.time
                   ? "bg-primary text-white"
                   : "hover:bg-primary/20"
@@ -152,7 +186,7 @@ const SeatLayout = () => {
             >
               <ClockIcon className="w-4 h-4" />
               <p className="text-sm">{IsoTimeFormat(item.time)}</p>
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -170,9 +204,12 @@ const SeatLayout = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-11">
-            {groupRows.slice(1).map((group, idx) => (
-              <div key={idx}>{group.map((row) => renderSeats(row))}</div>
-            ))}
+            {groupRows.slice(1).map((group) => {
+              const groupKey = group.join("-");
+              return (
+                <div key={groupKey}>{group.map((row) => renderSeats(row))}</div>
+              );
+            })}
           </div>
         </div>
         <button
@@ -186,8 +223,6 @@ const SeatLayout = () => {
         </button>
       </div>
     </div>
-  ) : (
-    <SeatLayoutSkeleton />
   );
 };
 

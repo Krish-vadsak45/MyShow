@@ -4,6 +4,10 @@ import Booking from "../models/booking.model.js";
 import Movie from "../models/movie.model.js";
 import stripe from "stripe";
 import { inngest } from "../inngest/index.js";
+import redis, { getCachedData } from "../config/redis.js";
+
+const USER_BOOKINGS_TTL = 10 * 60; // 10 minutes
+const USER_FAVOURITES_TTL = 30 * 60; // 30 minutes
 
 // API controller Function to get user bookings
 export const getUserBookings = async (req, res) => {
@@ -14,6 +18,10 @@ export const getUserBookings = async (req, res) => {
       return res.json({ success: false, message: "Authentication required" });
     }
 
+    const cacheKey = `user:bookings:${userId}`;
+    const cached = await getCachedData(cacheKey);
+    if (cached) return res.json(cached);
+
     const bookings = await Booking.find({ user: userId }).populate({
       path: "show",
       populate: { path: "movie" },
@@ -21,6 +29,7 @@ export const getUserBookings = async (req, res) => {
 
     // Check payment status for unpaid bookings — all Stripe calls run in parallel
     const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY);
+    let changed = false;
     await Promise.all(
       bookings
         .filter((b) => !b.isPaid && b.paymentLink)
@@ -28,25 +37,38 @@ export const getUserBookings = async (req, res) => {
           try {
             const match = booking.paymentLink.match(/cs_(test|live)_\w+/);
             if (match) {
-              const session = await stripeInstance.checkout.sessions.retrieve(match[0]);
+              const session = await stripeInstance.checkout.sessions.retrieve(
+                match[0],
+              );
               if (session.payment_status === "paid") {
                 booking.isPaid = true;
                 booking.paymentLink = "";
                 await booking.save();
-                await inngest.send({ name: "app/show.booked", data: { bookingId: booking._id } });
+                changed = true;
+                await inngest.send({
+                  name: "app/show.booked",
+                  data: { bookingId: booking._id },
+                });
               }
             }
           } catch (err) {
-            logger.error({ err, bookingId: booking._id }, "Error verifying payment for booking");
+            logger.error(
+              { err, bookingId: booking._id },
+              "Error verifying payment for booking",
+            );
           }
-        })
+        }),
     );
 
     const now = new Date();
     const futureBookings = bookings.filter(
       (booking) => booking.show && new Date(booking.show.showDateTime) > now,
     );
-    res.json({ success: true, bookings: futureBookings });
+
+    const payload = { success: true, bookings: futureBookings };
+    await redis.set(cacheKey, JSON.stringify(payload), "EX", USER_BOOKINGS_TTL);
+
+    res.json(payload);
   } catch (error) {
     logger.error({ err: error });
     res.json({ success: false, message: error.message });
@@ -74,6 +96,10 @@ export const updateFavourite = async (req, res) => {
       privateMetadata: { ...user.privateMetadata, favourite: updated },
     });
 
+    // Invalidate caches
+    await redis.del(`user:favourite:${userId}`);
+    await redis.del(`recommendations:${userId}`);
+
     res.json({ success: true, message: "Favourite updated successfully" });
   } catch (error) {
     logger.error({ err: error });
@@ -89,13 +115,25 @@ export const getFavourite = async (req, res) => {
       return res.json({ success: false, message: "Authentication required" });
     }
 
+    const cacheKey = `user:favourite:${userId}`;
+    const cached = await getCachedData(cacheKey);
+    if (cached) return res.json(cached);
+
     const user = await clerkClient.users.getUser(userId);
-    const favourites = user.privateMetadata.favourite;
+    const favourites = user.privateMetadata.favourite || [];
 
     //Get movies from database
     const movie = await Movie.find({ _id: { $in: favourites } });
 
-    res.json({ success: true, movie });
+    const payload = { success: true, movie };
+    await redis.set(
+      cacheKey,
+      JSON.stringify(payload),
+      "EX",
+      USER_FAVOURITES_TTL,
+    );
+
+    res.json(payload);
   } catch (error) {
     logger.error({ err: error });
     res.json({ success: false, message: error.message });

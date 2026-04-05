@@ -2,7 +2,6 @@ import Movie from "../models/movie.model.js";
 import logger from "../config/logger.js";
 import Booking from "../models/booking.model.js";
 import Show from "../models/show.model.js";
-import User from "../models/user.model.js";
 import { clerkClient } from "@clerk/express";
 import redis from "../config/redis.js";
 
@@ -29,8 +28,7 @@ export const getPersonalizedRecommendations = async (req, res) => {
     let favouriteMovieIds = [];
     const user = await clerkClient.users.getUser(userId);
     if (
-      user &&
-      user.privateMetadata &&
+      user?.privateMetadata?.favourite &&
       Array.isArray(user.privateMetadata.favourite) &&
       user.privateMetadata.favourite.length > 0
     ) {
@@ -54,16 +52,11 @@ export const getPersonalizedRecommendations = async (req, res) => {
       });
     });
 
-    // console.log(genreCount);
-
     // 3. Find top genre(s)
     const topGenreNames = Object.entries(genreCount)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 4)
       .map(([name]) => name);
-    // console.log("Top genre type:", typeof topGenreNames);
-    // console.log("Is array:", Array.isArray(topGenreNames));
-    // console.log("Value:", topGenreNames);
 
     // 4. Recommend upcoming shows for those genres
     let recommended = [];
@@ -73,32 +66,22 @@ export const getPersonalizedRecommendations = async (req, res) => {
         "genres.name": { $in: topGenreNames },
       }).select("_id");
       const movieIds = moviesInGenres.map((m) => m._id.toString());
-      // console.log("moviesInGenres", movieIds);
 
       // Find all upcoming shows for those movies
       const upcomingShows = await Show.find({
         movie: { $in: movieIds },
         showDateTime: { $gte: now },
       }).populate("movie");
-      // console.log("upcomingShows", upcomingShows);
 
       // Get unique movie IDs from those shows
       const availableMovieIds = [
         ...new Set(upcomingShows.map((show) => show.movie._id.toString())),
       ];
-      // console.log("availableMovieIds", availableMovieIds);
-
-      // Exclude movies already booked by the user
-      const bookedMovieIds = bookings.map((b) =>
-        b.show?.movie?._id?.toString()
-      );
-      // console.log("bookedMovieIds", bookedMovieIds);
 
       // Recommend only movies with available shows and not already booked
       recommended = await Movie.find({
         _id: { $in: availableMovieIds },
       }).limit(10);
-      // console.log(recommended);
     } else {
       // fallback: recommend popular movies
       const upcomingShows = await Show.find({
@@ -113,7 +96,12 @@ export const getPersonalizedRecommendations = async (req, res) => {
     }
 
     const payload = { success: true, recommended };
-    await redis.set(cacheKey, JSON.stringify(payload), "EX", RECOMMENDATION_CACHE_TTL);
+    await redis.set(
+      cacheKey,
+      JSON.stringify(payload),
+      "EX",
+      RECOMMENDATION_CACHE_TTL,
+    );
     res.json(payload);
   } catch (err) {
     logger.error({ err });

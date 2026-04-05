@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, memo } from "react";
 import { useAppContext } from "../context/AppContext";
 import MovieCard from "./MovieCard";
 import BlurCircle from "./BlurCircle";
 
-const RecommendedForYou = () => {
+const RecommendedForYou = memo(() => {
   const { recommendationShows } = useAppContext();
 
   if (!recommendationShows.length) return null;
@@ -22,6 +22,6 @@ const RecommendedForYou = () => {
       </div>
     </div>
   );
-};
+});
 
 export default RecommendedForYou;

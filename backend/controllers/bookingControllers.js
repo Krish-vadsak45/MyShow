@@ -100,12 +100,10 @@ export const unlockSeats = async (req, res) => {
     const { showId, seatId } = parsed.data;
 
     if (!lockToken) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "lockToken is required for unlocking",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "lockToken is required for unlocking",
+      });
     }
 
     await redis.eval(unlockScript, 1, seatKey(showId, seatId), lockToken);
@@ -221,8 +219,10 @@ export const createBooking = async (req, res) => {
     booking.paymentLink = session.url;
     await booking.save();
 
-    // Invalidate recommendation cache — user's genre history just changed
+    // Invalidate recommendation and dashboard cache — user's genre history just changed
     redis.del(`recommendations:${userId}`).catch(() => {});
+    redis.del(`user:bookings:${userId}`).catch(() => {});
+    redis.del("admin:dashboard").catch(() => {});
 
     // Inngest still checks payment status after 10 min and cleans up if unpaid
     await inngest.send({

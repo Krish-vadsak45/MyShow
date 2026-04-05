@@ -1,11 +1,14 @@
-import React from "react";
+import React, { Suspense } from "react";
 import BlurCircle from "../components/BlurCircle";
 import MovieFilter from "../components/MovieFilter";
+import { MoviesSkeleton } from "../components/skeletons";
 
 const Movies = () => {
   return (
     <div className="relative my-20 mb-10 md:mb-60 px-6 md:px-16 lg:px-40 xl:px-44 overflow-hidden min-h-[80vh]">
-      <MovieFilter />
+      <Suspense fallback={<MoviesSkeleton className="px-0 my-0" />}>
+        <MovieFilter />
+      </Suspense>
       <BlurCircle top="150px" left="0px" />
       <BlurCircle bottom="150px" right="0px" />
     </div>

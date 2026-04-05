@@ -4,20 +4,21 @@ import { ArrowRight, Calendar, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import backgroundImage from "../assets/backgroundImage.png";
 
+const featuredMovies = [
+  {
+    id: 1,
+    title: "Guardians of the Galaxy",
+    subtitle: "Vol. 3",
+    genre: "Action | Adventure | Sci-Fi",
+    year: "2023",
+    duration: "2h 30m",
+    description:
+      "In a post-apocalyptic world where cities ride on wheels and consume each other to survive, two people meet in London and try to stop a conspiracy.",
+  },
+];
+
 const HeroSection = () => {
   const navigate = useNavigate();
-  const featuredMovies = [
-    {
-      id: 1,
-      title: "Guardians of the Galaxy",
-      subtitle: "Vol. 3",
-      genre: "Action | Adventure | Sci-Fi",
-      year: "2023",
-      duration: "2h 30m",
-      description:
-        "In a post-apocalyptic world where cities ride on wheels and consume each other to survive, two people meet in London and try to stop a conspiracy.",
-    },
-  ];
 
   return (
     <section className="relative h-screen overflow-hidden">
@@ -81,7 +82,6 @@ const HeroSection = () => {
                     <button
                       onClick={() => {
                         navigate("/movies");
-                        scrollTo(0, 0);
                       }}
                       className="group flex items-center max-w-50 md:max-w-2xl gap-2 mt-1 px-6 py-2 text-white bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 rounded-full font-medium text-lg shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 transition-all duration-200 ease-out cursor-pointer"
                     >
