@@ -20,6 +20,7 @@ import {
   ChevronRight,
   X,
 } from "lucide-react";
+import PropTypes from "prop-types";
 import { useSearchParams } from "react-router-dom";
 import { useAppContext } from "@/context/AppContext";
 import MovieCard from "./MovieCard";
