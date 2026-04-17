@@ -2,8 +2,6 @@ import { clerkClient } from "@clerk/express";
 import logger from "../config/logger.js";
 import Booking from "../models/booking.model.js";
 import Movie from "../models/movie.model.js";
-import stripe from "stripe";
-import { inngest } from "../inngest/index.js";
 import redis, { getCachedData } from "../config/redis.js";
 
 const USER_BOOKINGS_TTL = 10 * 60; // 10 minutes
@@ -22,43 +20,13 @@ export const getUserBookings = async (req, res) => {
     const cached = await getCachedData(cacheKey);
     if (cached) return res.json(cached);
 
+    // Payment status is kept up-to-date exclusively by the Stripe webhook
+    // (checkout.session.completed → DB update). No polling needed here —
+    // polling per-request would add Stripe API latency on every page load.
     const bookings = await Booking.find({ user: userId }).populate({
       path: "show",
       populate: { path: "movie" },
     });
-
-    // Check payment status for unpaid bookings — all Stripe calls run in parallel
-    const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY);
-    let changed = false;
-    await Promise.all(
-      bookings
-        .filter((b) => !b.isPaid && b.paymentLink)
-        .map(async (booking) => {
-          try {
-            const match = booking.paymentLink.match(/cs_(test|live)_\w+/);
-            if (match) {
-              const session = await stripeInstance.checkout.sessions.retrieve(
-                match[0],
-              );
-              if (session.payment_status === "paid") {
-                booking.isPaid = true;
-                booking.paymentLink = "";
-                await booking.save();
-                changed = true;
-                await inngest.send({
-                  name: "app/show.booked",
-                  data: { bookingId: booking._id },
-                });
-              }
-            }
-          } catch (err) {
-            logger.error(
-              { err, bookingId: booking._id },
-              "Error verifying payment for booking",
-            );
-          }
-        }),
-    );
 
     const now = new Date();
     const futureBookings = bookings.filter(

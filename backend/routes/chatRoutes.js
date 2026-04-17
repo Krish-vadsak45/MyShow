@@ -2,7 +2,6 @@
 import express from "express"; 
 const Chatrouter = express.Router();
 import {
-  getMovies,
   getRecommendations,
   geminiChatAboutDatabase,
 } from "../controllers/chatControllers.js";

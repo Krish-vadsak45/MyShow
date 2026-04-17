@@ -18,6 +18,7 @@ const withJitter = (seconds) => seconds + Math.floor(Math.random() * 60 - 30);
 // ─── Validation Schemas ───────────────────────────────────────────────────────
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_REGEX = /^\d{2}:\d{2}$/;
+const OBJECT_ID_REGEX = /^[a-fA-F0-9]{24}$/;
 
 const addShowSchema = z.object({
   movieId: z.number().int().positive("movieId must be a positive integer"),
@@ -184,6 +185,8 @@ export const addShow = async (req, res) => {
 
     // Bust show listings cache so new shows appear immediately
     await invalidateShowsCache();
+    // Bust admin shows cache too — admin panel lists all active shows
+    redis.del("admin:shows").catch(() => {});
 
     await inngest.send({
       name: "app/show.added",

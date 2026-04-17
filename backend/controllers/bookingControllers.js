@@ -212,17 +212,20 @@ export const createBooking = async (req, res) => {
       cancel_url: `${origin}/mybookings`,
       line_items,
       mode: "payment",
-      metadata: { bookingId: booking._id.toString() },
+      // userId is included so the webhook can bust per-user caches and
+      // trigger recommendation refresh without an extra DB read.
+      metadata: { bookingId: booking._id.toString(), userId },
       expires_at: Math.floor(Date.now() / 1000) + 32 * 60,
     });
 
     booking.paymentLink = session.url;
     await booking.save();
 
-    // Invalidate recommendation and dashboard cache — user's genre history just changed
-    redis.del(`recommendations:${userId}`).catch(() => {});
+    // Bust booking-list cache immediately so the UI reflects the new booking.
+    // recommendation cache and admin caches are busted by the Stripe webhook
+    // (checkout.session.completed) once payment is actually confirmed — not here,
+    // because at this point the user hasn't paid yet.
     redis.del(`user:bookings:${userId}`).catch(() => {});
-    redis.del("admin:dashboard").catch(() => {});
 
     // Inngest still checks payment status after 10 min and cleans up if unpaid
     await inngest.send({

@@ -3,10 +3,19 @@ import logger from "../config/logger.js";
 import Show from "../models/show.model.js";
 import User from "../models/user.model.js";
 import UpcomingMovie from "../models/upcomingMovie.model.js";
-import redis, { getOrSetCache } from "../config/redis.js";
+import { getOrSetCache } from "../config/redis.js";
 
 const DASHBOARD_CACHE_KEY = "admin:dashboard";
-const DASHBOARD_CACHE_TTL = 5 * 60; // 5 minutes
+const DASHBOARD_CACHE_TTL = 5 * 60;       // 5 minutes
+
+const SHOWS_CACHE_KEY    = "admin:shows";
+const SHOWS_CACHE_TTL    = 5 * 60;         // 5 minutes — busted on addShow
+
+// Bookings key encodes page+limit so each page is cached independently.
+// The webhook busts the default page (1/100) on every payment; other pages
+// expire naturally via the short TTL.
+const bookingsCacheKey = (page, limit) => `admin:bookings:${page}:${limit}`;
+const BOOKINGS_CACHE_TTL = 2 * 60;        // 2 minutes
 
 export const isAdmin = (_req, res) => {
   res.json({ success: true, isAdmin: true });
@@ -48,12 +57,17 @@ export const getDashboardData = async (_req, res) => {
 
 export const getAllShows = async (_req, res) => {
   try {
-    const now = new Date().toISOString();
-    const shows = await Show.find({ showDateTime: { $gte: now } })
-      .populate("movie")
-      .sort({ showDateTime: 1 })
-      .lean();
-    res.json({ success: true, shows });
+    const fetchFresh = async () => {
+      const now = new Date().toISOString();
+      const shows = await Show.find({ showDateTime: { $gte: now } })
+        .populate("movie")
+        .sort({ showDateTime: 1 })
+        .lean();
+      return { success: true, shows };
+    };
+
+    const payload = await getOrSetCache(SHOWS_CACHE_KEY, fetchFresh, SHOWS_CACHE_TTL);
+    res.json(payload);
   } catch (error) {
     logger.error({ err: error });
     res.json({ success: false, message: error.message });
@@ -63,19 +77,26 @@ export const getAllShows = async (_req, res) => {
 export const getAllBookings = async (req, res) => {
   try {
     const { page = 1, limit = 100 } = req.query;
-    const bookings = await Booking.find({})
-      .select("user show amount bookedSeats isPaid createdAt")
-      .populate("user", "name email image")
-      .populate({
-        path: "show",
-        select: "showDateTime showPrice movie",
-        populate: { path: "movie", select: "title poster_path" },
-      })
-      .sort({ createdAt: -1 })
-      .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit))
-      .lean();
-    res.json({ success: true, bookings });
+    const cacheKey = bookingsCacheKey(page, limit);
+
+    const fetchFresh = async () => {
+      const bookings = await Booking.find({})
+        .select("user show amount bookedSeats isPaid createdAt")
+        .populate("user", "name email image")
+        .populate({
+          path: "show",
+          select: "showDateTime showPrice movie",
+          populate: { path: "movie", select: "title poster_path" },
+        })
+        .sort({ createdAt: -1 })
+        .skip((Number(page) - 1) * Number(limit))
+        .limit(Number(limit))
+        .lean();
+      return { success: true, bookings };
+    };
+
+    const payload = await getOrSetCache(cacheKey, fetchFresh, BOOKINGS_CACHE_TTL);
+    res.json(payload);
   } catch (error) {
     logger.error({ err: error });
     res.json({ success: false, message: error.message });

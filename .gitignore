@@ -1,2 +1,18 @@
 .env
 redis.md
+
+# code-review-graph
+.code-review-graph/
+AGENTS.md
+
+# Claude
+CLAUDE.md
+.claude/
+
+# Other AI
+GEMINI.md
+.cursor/
+.cursorrules
+.windsurfrules
+.opencode.json
+.mcp.json

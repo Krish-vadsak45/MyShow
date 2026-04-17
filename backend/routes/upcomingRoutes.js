@@ -3,9 +3,7 @@ import {
   fetchUpcoming,
   toggleNotify,
   adminList,
-  notifyUsers,
   getUserNotified,
-  // ...add any other exports here
 } from "../controllers/upcomingControllers.js";
 import { auth, protectAdmin } from "../middleware/auth.js";
 

@@ -80,7 +80,7 @@ app.use("/api/agent", agentRoutes);
 app.use("/api/auth", authRoutes);
 
 // Global error handler
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   logger.error({ err, method: req.method, path: req.path }, "Unhandled error");
   res.status(err.status || 500).json({
     success: false,

@@ -503,7 +503,7 @@ const Agent = async (req, res) => {
       if (Array.isArray(arr) && arr.length > 0) {
         // Format each show/movie/booking in a user-friendly way
         formatted = arr
-          .map((item, idx) => {
+          .map((item) => {
             // Try to extract fields for both tools
             const title =
               item.movieTitle ||

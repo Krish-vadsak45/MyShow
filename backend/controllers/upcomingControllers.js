@@ -1,8 +1,8 @@
 import axios from "axios";
 import logger from "../config/logger.js";
 import UpcomingMovie from "../models/upcomingMovie.model.js";
-import sendEmail from "../config/nodeMailer.js";
 import redis, { getOrSetCache } from "../config/redis.js";
+import { inngest } from "../inngest/index.js";
 
 const UPCOMING_CACHE_KEY = "upcoming:movies";
 const UPCOMING_CACHE_TTL = 60 * 60; // 1 hour
@@ -133,64 +133,18 @@ export const adminList = async (_req, res) => {
   }
 };
 
+// Fire-and-forget: hand off to Inngest so this call returns instantly.
+// All email fan-out, retry logic, and the notified-flag update live in the
+// `notify-movie-released` Inngest function — nothing blocks the calling thread.
 export const notifyUsers = async (tmdbId) => {
   try {
-    const movie = await UpcomingMovie.findOne({ tmdbId }).populate(
-      "notifyUsers",
-    );
-    if (!movie || movie.notified) return;
-    for (const user of movie.notifyUsers) {
-      await sendEmail({
-        to: user.email,
-        subject: `"${movie.title}" is now playing – book your tickets!`,
-        html: `
-      <div style="font-family: Arial, sans-serif; line-height: 1.5;">
-        <h2>Hi ${user.name},</h2>
-
-        <p>
-          Good news! The movie you asked us to watch —
-          <strong style="color: #F84565;">"${movie.title}"</strong> —
-          is now playing at your favourite theatre.
-        </p>
-
-        <p>
-          Click the button below to choose seats and complete your booking
-          before they sell out:
-        </p>
-
-        <p style="text-align: center; margin: 24px 0;">
-          <a
-            href="${bookingUrl}"
-            style="
-              background: #F84565;
-              color: #ffffff;
-              padding: 12px 24px;
-              border-radius: 6px;
-              text-decoration: none;
-              font-weight: bold;"
-          >
-            Book Tickets
-          </a>
-        </p>
-
-        <p>See you at the movies!</p>
-        <p>Thanks for using MyShow<br/>– The MyShow Team</p>
-
-        <hr style="border:none;border-top:1px solid #eaeaea;margin:32px 0;"/>
-        <small style="color:#888;">
-          You're receiving this email because you clicked "Notify Me" for
-          "${movie.title}". If you'd like to stop these alerts,
-          <a href="${unsubscribeUrl}">unsubscribe here</a>.
-        </small>
-        <p>Visit our website</p> <a href="https://myshow-eight.vercel.app/">MyShow</a> <p> For more details.</p>
-      </div>
-    `,
-      });
-    }
-    movie.notified = true;
-    await movie.save();
+    await inngest.send({
+      name: "app/movie.released",
+      data: { tmdbId },
+    });
+    logger.info({ tmdbId }, "app/movie.released event queued");
   } catch (err) {
-    logger.error({ err }, "notifyUsers error");
+    logger.error({ err }, "Failed to queue app/movie.released event");
     throw err;
   }
 };
