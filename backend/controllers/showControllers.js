@@ -19,6 +19,7 @@ const withJitter = (seconds) => seconds + Math.floor(Math.random() * 60 - 30);
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_REGEX = /^\d{2}:\d{2}$/;
 const OBJECT_ID_REGEX = /^[a-fA-F0-9]{24}$/;
+const TMDB_ID_REGEX = /^\d+$/;
 
 const addShowSchema = z.object({
   movieId: z.number().int().positive("movieId must be a positive integer"),
@@ -312,8 +313,8 @@ export const getShow = async (req, res) => {
   try {
     const { movieId } = req.params;
 
-    // 1. Validation First: Strict Object ID check
-    if (!OBJECT_ID_REGEX.test(movieId)) {
+    // 1. Validation: Support both MongoDB ObjectIds and numeric IDs (natural keys)
+    if (!OBJECT_ID_REGEX.test(movieId) && !TMDB_ID_REGEX.test(movieId)) {
       return res
         .status(400)
         .json({ success: false, message: "Invalid movie ID format" });
