@@ -8,21 +8,15 @@ import {
   Star,
   Users,
 } from "lucide-react";
-import React, { useState } from "react";
+import React from "react";
 import Countdown from "./Countdown";
 import NotifyButton from "./NotifyButton";
 
 const TMDB_IMG = "https://image.tmdb.org/t/p/w500";
 
 const UpcomingMovieCard = ({ movie, notify, onNotify }) => {
-  const [isHovered, setIsHovered] = useState(false);
-
   return (
-    <div
-      className="group relative bg-gradient-to-br from-gray-900/50 to-gray-800/50 backdrop-blur-sm rounded-2xl overflow-hidden border border-gray-800 hover:border-red-500/30 transition-all duration-500 hover:scale-105 hover:-translate-y-2"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
+    <div className="group relative bg-gradient-to-br from-gray-900/50 to-gray-800/50 backdrop-blur-sm rounded-2xl overflow-hidden border border-gray-800 hover:border-red-500/30 transition-all duration-500 hover:scale-105 hover:-translate-y-2">
       {/* Background Glow Effect */}
       <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
       {/* Movie Poster */}

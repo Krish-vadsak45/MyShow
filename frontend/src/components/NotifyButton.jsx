@@ -1,7 +1,7 @@
 import { Bell, BellRing } from "lucide-react";
 import { useState } from "react";
 
-const NotifyButton = ({ tmdbId, isNotified, onNotify, notifyCount }) => {
+const NotifyButton = ({ tmdbId, isNotified, onNotify }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 

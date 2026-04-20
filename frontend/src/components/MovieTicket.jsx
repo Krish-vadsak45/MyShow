@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useRef } from "react";
 import { Download } from "lucide-react";
 import MovieTicketUi from "./MovieTicketUi";
 import { toPng } from "html-to-image";
@@ -23,7 +23,7 @@ const MovieTicket = ({ booking }) => {
         });
         pdf.addImage(dataUrl, "PNG", 0, 0, img.width, img.height);
         pdf.save(
-          `MyShows-Ticket-${booking.show.movie.title.replace(/\s+/g, "-")}.pdf`
+          `MyShows-Ticket-${booking.show.movie.title.replace(/\s+/g, "-")}.pdf`,
         );
       };
     } catch (err) {

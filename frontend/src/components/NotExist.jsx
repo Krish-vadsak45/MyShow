@@ -18,7 +18,7 @@ const NotExist = ({
           <div className="relative">
             <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full blur-lg opacity-20 animate-pulse"></div>
             <div className="relative bg-white rounded-full p-6 shadow-lg border border-gray-200">
-              <Icon className="w-12 h-12 text-primary mx-auto" />
+              <Icon className="w-12 h-12 text-blue-600" />
             </div>
           </div>
         </div>

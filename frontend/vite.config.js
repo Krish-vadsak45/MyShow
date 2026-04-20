@@ -1,9 +1,8 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import tailwindPostcss from "@tailwindcss/postcss";
-import autoprefixer from "autoprefixer";
 import path from "path";
+import process from "node:process";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -40,12 +39,6 @@ export default defineConfig({
     },
     chunkSizeWarningLimit: 1000,
     cssCodeSplit: true,
-  },
-  // Force Vite to use local PostCSS plugins and ignore any parent/global config
-  css: {
-    postcss: {
-      plugins: [tailwindPostcss(), autoprefixer()],
-    },
   },
   server: {
     proxy: {

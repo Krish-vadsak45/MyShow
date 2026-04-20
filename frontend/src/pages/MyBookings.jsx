@@ -4,7 +4,7 @@ import BlurCircle from "../components/BlurCircle";
 import timeFormat from "../lib/timeFormat";
 import { dateFormat } from "../lib/dateFormat";
 import { useAppContext } from "../context/AppContext";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import MovieTicket from "../components/MovieTicket";
 import NotExist from "../components/NotExist";
 import { Calendar, Eye } from "lucide-react";
@@ -18,7 +18,6 @@ const MyBookings = () => {
 
   const [bookings, setBookings] = useState([]);
   const [isloading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
 
   const getMyBookings = useCallback(async () => {
     try {

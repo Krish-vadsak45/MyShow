@@ -40,6 +40,7 @@ const AdminAnalytics = () => {
         setAnalytics(res.data);
         setLoading(false);
       } catch (err) {
+        console.error(err);
         setLoading(false);
       }
     };

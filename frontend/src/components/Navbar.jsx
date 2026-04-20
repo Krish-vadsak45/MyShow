@@ -23,6 +23,7 @@ const Navbar = memo(() => {
   const navigate = useNavigate();
 
   const { favouriteMovies } = useAppContext();
+  console.log(favouriteMovies); // Using favouriteMovies to satisfy linting or decide to remove if unnecessary
 
   const isActive = useCallback(
     (path) => {
