@@ -1,10 +1,46 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicone.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>myShow</title>
+    <meta
+      name="description"
+      content="myShow - Book movie tickets online. Explore upcoming releases, theatres, and your favorite movies."
+    />
+
+    <!-- Preconnect to Backend API -->
+    <link rel="preconnect" href="https://myshow-backend.vercel.app" />
+    <link rel="dns-prefetch" href="https://myshow-backend.vercel.app" />
+
+    <!-- Preconnect to YouTube for Trailer Thumbnails -->
+    <link rel="preconnect" href="https://img.youtube.com" />
+    <link rel="preconnect" href="https://i.ytimg.com" />
+
+    <!-- Preconnect to Font domains -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Preload critical fonts -->
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap"
+      media="print"
+      onload="this.media = 'all'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap"
+      />
+    </noscript>
+
+    <title>myShow | Book Movie Tickets Online</title>
   </head>
   <body>
     <div id="root"></div>

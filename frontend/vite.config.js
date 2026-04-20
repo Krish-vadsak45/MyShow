@@ -13,6 +13,34 @@ export default defineConfig({
       "@": path.resolve(process.cwd(), "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          // Flatten icons and small utilities into the main vendor chunk to avoid deep chains
+          if (
+            id.includes("lucide-react") ||
+            id.includes("clsx") ||
+            id.includes("tailwind-merge")
+          ) {
+            return "shared-ui-utils";
+          }
+          if (
+            id.includes("node_modules/react") ||
+            id.includes("node_modules/react-dom") ||
+            id.includes("node_modules/react-router-dom")
+          ) {
+            return "react-vendor";
+          }
+          if (id.includes("@clerk")) {
+            return "auth-vendor";
+          }
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000,
+    cssCodeSplit: true,
+  },
   // Force Vite to use local PostCSS plugins and ignore any parent/global config
   css: {
     postcss: {

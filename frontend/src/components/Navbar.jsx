@@ -24,24 +24,26 @@ const Navbar = memo(() => {
 
   const { favouriteMovies } = useAppContext();
 
-  const isActive = useCallback((path) => {
-    return location.pathname === path;
-  }, [location.pathname]);
+  const isActive = useCallback(
+    (path) => {
+      return location.pathname === path;
+    },
+    [location.pathname],
+  );
 
   return (
     <nav className="bg-transparent fixed top-0 left-0 w-[100vw] z-50">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link
-            to="/"
-            className="flex items-center space-x-2 w-[30%] md:w-[13%]"
-          >
+          <Link to="/" className="flex items-center space-x-2 w-40">
             <img
               src={assets.logo}
-              alt="logo image"
-              className="scale-100"
-              loading="lazy"
+              alt="myShow Logo"
+              width="160"
+              height="37"
+              className="object-contain"
+              fetchpriority="high"
             />
           </Link>
 

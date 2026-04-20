@@ -21,29 +21,33 @@ const HeroSection = () => {
   const navigate = useNavigate();
 
   return (
-    <section className="relative h-screen overflow-hidden">
+    <section className="relative h-screen overflow-hidden bg-black">
       <div className="relative h-full pt-16">
         {featuredMovies.map((movie) => (
-          <div key={movie.id} className={`absolute inset-0 `}>
+          <div key={movie.id} className="absolute inset-0">
             <div
-              className="absolute inset-0 bg-cover bg-center"
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat"
               style={{
                 backgroundImage: `url(${backgroundImage})`,
+                contentVisibility: "auto", // Tell the browser to skip rendering this if off-screen
+                containIntrinsicSize: "0 500px", // Provide estimated sizing for performance
               }}
             >
-              <div className="absolute inset-0"></div>
+              <div className="absolute inset-0 bg-black/40"></div>
             </div>
 
-            <div className="relative bg-black/20 z-10 flex items-center h-full px-6">
+            <div className="relative z-10 flex items-center h-full px-6">
               <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                 <div className="space-y-6">
                   {/* Movie Badge */}
                   <div className="inline-block">
                     <img
                       src={assets.marvelLogo}
-                      alt="marvellogo"
-                      className="max-h-11 lg:h-11 mt-20"
-                      loading="lazy"
+                      alt="Marvel Studio Logo"
+                      width="180"
+                      height="44"
+                      className="max-h-11 lg:h-11 mt-20 object-contain"
+                      fetchpriority="high"
                     />
                   </div>
 

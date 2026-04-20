@@ -314,7 +314,7 @@ const AboutUs = () => {
                     {member.name}
                   </h3>
                   <p className="text-red-400 font-medium mb-2">{member.role}</p>
-                  <p className="text-sm text-gray-500 mb-3">
+                  <p className="text-sm text-gray-400 mb-3">
                     {member.expertise}
                   </p>
                   <p className="text-gray-400 text-sm leading-relaxed group-hover:text-gray-300 transition-colors duration-300">

@@ -19,7 +19,7 @@ import { Link, useNavigate } from "react-router-dom";
 const footerLinks = {
   quickShow: [
     { name: "Home", path: "/" },
-    { name: "Movies", path: "/movies" },
+    { name: "Browse Movies", path: "/movies" },
     { name: "Theatres", path: "/theatres" },
     { name: "Releases", path: "/releases" },
     { name: "Favourite", path: "/favourite" },
@@ -34,10 +34,9 @@ const footerLinks = {
     { name: "Thriller" },
   ],
   movies: [
-    { name: "", href: "" },
-    { name: "Popular Movies", href: "/popular" },
-    { name: "Top Rated", href: "/top-rated" },
-    { name: "Coming Soon", href: "/coming-soon" },
+    { name: "Popular Movies", href: "/movies" },
+    { name: "Top Rated", href: "/movies" },
+    { name: "Coming Soon", href: "/upcoming" },
   ],
   support: [
     { name: "Our Story", href: "#ourstory" },
@@ -96,9 +95,11 @@ const ResponsiveFooter = memo(() => {
             {/* Logo */}
             <div className="flex items-center space-x-2 mb-4">
               <img
-                className="w-36 h-auto"
+                className="w-36 h-auto object-contain"
                 src={assets.logo}
-                alt="logo"
+                alt="myShow Logo"
+                width="144"
+                height="33"
                 loading="lazy"
               />
             </div>
@@ -254,7 +255,7 @@ const ResponsiveFooter = memo(() => {
                 <Mail className="h-5 w-5 text-pink-500" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm text-gray-500">Email</p>
+                <p className="text-sm text-gray-400">Email</p>
                 <p className="text-white text-sm lg:text-base truncate">
                   support@MyShows.com
                 </p>
@@ -265,7 +266,7 @@ const ResponsiveFooter = memo(() => {
                 <Phone className="h-5 w-5 text-pink-500" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm text-gray-500">Phone</p>
+                <p className="text-sm text-gray-400">Phone</p>
                 <p className="text-white text-sm lg:text-base">
                   +1 (555) 123-4567
                 </p>
@@ -276,7 +277,7 @@ const ResponsiveFooter = memo(() => {
                 <MapPin className="h-5 w-5 text-pink-500" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm text-gray-500">Location</p>
+                <p className="text-sm text-gray-400">Location</p>
                 <p className="text-white text-sm lg:text-base">
                   Los Angeles, CA
                 </p>
@@ -341,7 +342,7 @@ const ResponsiveFooter = memo(() => {
 
         {/* Trust Indicators */}
         <div className="border-t border-gray-800 pt-4 lg:pt-6 mt-4 lg:mt-6">
-          <div className="flex flex-wrap justify-center items-center gap-4 lg:gap-8 text-gray-500 text-xs">
+          <div className="flex flex-wrap justify-center items-center gap-4 lg:gap-8 text-gray-400 text-xs">
             <div className="flex items-center space-x-2">
               <Star className="h-4 w-4 text-yellow-400" />
               <span>4.8/5 Rating</span>
