@@ -91,7 +91,7 @@ export const getPersonalizedRecommendations = async (req, res) => {
         ...new Set(upcomingShows.map((show) => show.movie._id.toString())),
       ];
       recommended = await Movie.find({ _id: { $in: availableMovieIds } })
-        .sort({ popularity: -1 })
+        .sort({ vote_average: -1, release_date: -1 })
         .limit(10);
     }
 

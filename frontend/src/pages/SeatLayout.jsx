@@ -63,29 +63,45 @@ const SeatLayout = () => {
 
   const handleSeatClick = useCallback(
     async (seatId) => {
+      if (!selectedTime) {
+        toast.error("Please select a show time first");
+        return;
+      }
+
+      if (occupiedSeats.includes(seatId) && !selectedSeats.includes(seatId)) {
+        return;
+      }
+
       // If seat is already selected, unlock it
       if (selectedSeats.includes(seatId)) {
         const token = seatTokens[seatId]; // Access the stored token
-        await axios.post("/api/booking/unlock", {
-          showId: id,
+        await axios.post("/api/booking/unlock-seats", {
+          showId: selectedTime.showId,
           seatId,
           lockToken: token,
         });
         setSelectedSeats((prev) => prev.filter((s) => s !== seatId));
+        setSeatTokens((prev) => {
+          const next = { ...prev };
+          delete next[seatId];
+          return next;
+        });
       } else {
         // Lock the seat and save the token
-        const { data } = await axios.post("/api/booking/lock", {
-          showId: id,
+        const { data } = await axios.post("/api/booking/lock-seats", {
+          showId: selectedTime.showId,
           seatId,
         });
         if (data.success) {
           // SAVE THE TOKEN!
           setSeatTokens((prev) => ({ ...prev, [seatId]: data.lockToken }));
           setSelectedSeats((prev) => [...prev, seatId]);
+        } else if (data.message) {
+          toast.error(data.message);
         }
       }
     },
-    [selectedSeats, seatTokens, axios, id],
+    [selectedSeats, seatTokens, axios, selectedTime, occupiedSeats],
   );
 
   const renderSeats = useCallback(
@@ -157,6 +173,12 @@ const SeatLayout = () => {
       getOccupiedSeats();
     }
   }, [selectedTime]);
+
+  useEffect(() => {
+    setSelectedSeats([]);
+    setSeatTokens({});
+    setOccupiedSeats([]);
+  }, [selectedTime?.showId]);
 
   if (!show) {
     return <SeatLayoutSkeleton />;

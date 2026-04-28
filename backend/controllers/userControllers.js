@@ -28,12 +28,7 @@ export const getUserBookings = async (req, res) => {
       populate: { path: "movie" },
     });
 
-    const now = new Date();
-    const futureBookings = bookings.filter(
-      (booking) => booking.show && new Date(booking.show.showDateTime) > now,
-    );
-
-    const payload = { success: true, bookings: futureBookings };
+    const payload = { success: true, bookings };
     await redis.set(cacheKey, JSON.stringify(payload), "EX", USER_BOOKINGS_TTL);
 
     res.json(payload);

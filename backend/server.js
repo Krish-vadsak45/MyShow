@@ -67,6 +67,7 @@ app.get("/health", (_req, res) => {
 app.get("/", (req, res) => {
   res.send("server is live!");
 });
+app.get("/api/health", (req, res) => res.status(200).send("OK"));
 app.use("/api/inngest", serve({ client: inngest, functions }));
 app.use("/api/show", showRouter);
 app.use("/api/booking", bookingRouter);

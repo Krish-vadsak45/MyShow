@@ -14,6 +14,13 @@ const NOW_PLAYING_CACHE_TTL = 6 * 60 * 60; // 6 hours
 
 // Helper to add jitter to TTL (±30s) to prevent cache stampede
 const withJitter = (seconds) => seconds + Math.floor(Math.random() * 60 - 30);
+export const formatDateKey = (value) => {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 // ─── Validation Schemas ───────────────────────────────────────────────────────
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
@@ -333,7 +340,7 @@ export const getShow = async (req, res) => {
 
       const dateTime = {};
       shows.forEach((show) => {
-        const date = new Date(show.showDateTime).toISOString().split("T")[0];
+        const date = formatDateKey(show.showDateTime);
         if (!dateTime[date]) dateTime[date] = [];
         dateTime[date].push({ time: show.showDateTime, showId: show._id });
       });

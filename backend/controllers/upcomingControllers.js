@@ -63,6 +63,8 @@ export const fetchUpcoming = async (_req, res) => {
         title: m.title,
         posterPath: m.poster_path,
         releaseDate: m.release_date,
+        popularity: m.popularity,
+        voteAverage: m.vote_average,
         notifyCount: notifyMap.get(m.id) ?? 0,
       }));
     };

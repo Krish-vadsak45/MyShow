@@ -136,19 +136,19 @@ export default function ChatBot({ onClose }) {
                           remarkPlugins={[remarkGfm]}
                           rehypePlugins={[rehypeRaw]}
                           components={{
-                            h1: ({ node, ...props }) => (
+                            h1: (props) => (
                               <h1
                                 className="text-2xl font-bold mt-6 mb-4 text-black"
                                 {...props}
                               />
                             ),
-                            h2: ({ node, ...props }) => (
+                            h2: (props) => (
                               <h2
                                 className="text-xl font-semibold mt-4 mb-3 text-black"
                                 {...props}
                               />
                             ),
-                            h3: ({ node, ...props }) => (
+                            h3: (props) => (
                               <h3
                                 className="text-lg font-medium mt-3 mb-2 text-black"
                                 {...props}
@@ -170,13 +170,13 @@ export default function ChatBot({ onClose }) {
                                 />
                               );
                             },
-                            ul: ({ node, ...props }) => (
+                            ul: (props) => (
                               <ul
                                 className="list-disc pl-6 text-gray-300 my-2"
                                 {...props}
                               />
                             ),
-                            li: ({ node, ...props }) => (
+                            li: (props) => (
                               <li
                                 className="mb-1 leading-relaxed text-black"
                                 {...props}
@@ -188,16 +188,10 @@ export default function ChatBot({ onClose }) {
                             //     {...props}
                             //   />
                             // ),
-                            em: ({ node, ...props }) => (
+                            em: (props) => (
                               <em className="italic text-gray-950" {...props} />
                             ),
-                            code: ({
-                              node,
-                              inline,
-                              className,
-                              children,
-                              ...props
-                            }) => {
+                            code: ({ inline, children, ...props }) => {
                               return inline ? (
                                 <code
                                   className="bg-zinc-700 px-1 py-0.5 rounded text-orange-300 font-mono text-sm"
@@ -216,7 +210,7 @@ export default function ChatBot({ onClose }) {
                                 </pre>
                               );
                             },
-                            blockquote: ({ node, ...props }) => (
+                            blockquote: (props) => (
                               <blockquote
                                 className="border-l-4 border-zinc-950 pl-4 italic text-gray-400 my-4"
                                 {...props}

@@ -22,6 +22,7 @@ const Upcoming = () => {
   const [notify, setNotify] = useState({});
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [bulkNotifying, setBulkNotifying] = useState(false);
   const { user } = useAppContext();
 
   useEffect(() => {
@@ -52,7 +53,47 @@ const Upcoming = () => {
     return true;
   };
 
-  const filteredMovies = movies.filter(() => true);
+  const filteredMovies = movies.filter((movie) => {
+    if (filter === "popular") return (movie.popularity ?? 0) >= 100;
+    if (filter === "highly-rated") return (movie.voteAverage ?? 0) >= 7;
+    return true;
+  });
+
+  const handleSetAllNotifications = async () => {
+    if (!user) {
+      toast.error("please login first");
+      return;
+    }
+
+    const pendingMovies = filteredMovies.filter((movie) => !notify[movie.tmdbId]);
+    if (!pendingMovies.length) {
+      toast.success("Notifications are already set for these movies");
+      return;
+    }
+
+    setBulkNotifying(true);
+    try {
+      const results = await Promise.all(
+        pendingMovies.map((movie) =>
+          axios.post("/api/upcoming/notify", { tmdbId: movie.tmdbId }),
+        ),
+      );
+
+      setNotify((prev) => {
+        const next = { ...prev };
+        pendingMovies.forEach((movie, index) => {
+          next[movie.tmdbId] = results[index].data.notify;
+        });
+        return next;
+      });
+
+      toast.success(`Notifications set for ${pendingMovies.length} movies`);
+    } catch {
+      toast.error("Failed to set notifications for all movies");
+    } finally {
+      setBulkNotifying(false);
+    }
+  };
 
   if (loading) return <UpcomingSkeleton />;
 
@@ -107,20 +148,23 @@ const Upcoming = () => {
                   { key: "all", label: "All Movies", icon: Film },
                   { key: "popular", label: "Popular", icon: TrendingUp },
                   { key: "highly-rated", label: "Highly Rated", icon: Star },
-                ].map(({ key, label, icon: Icon }) => (
-                  <button
-                    key={key}
-                    onClick={() => setFilter(key)}
-                    className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center ${
-                      filter === key
-                        ? "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg"
-                        : "text-gray-400 hover:text-white hover:bg-gray-800/50"
-                    }`}
-                  >
-                    <Icon className="w-4 h-4 mr-2" />
-                    {label}
-                  </button>
-                ))}
+                ].map(({ key, label, icon }) => {
+                  const FilterIcon = icon;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setFilter(key)}
+                      className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 flex items-center ${
+                        filter === key
+                          ? "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg"
+                          : "text-gray-400 hover:text-white hover:bg-gray-800/50"
+                      }`}
+                    >
+                      <FilterIcon className="w-4 h-4 mr-2" />
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -172,9 +216,13 @@ const Upcoming = () => {
               Join thousands of movie enthusiasts who get early access to
               tickets and exclusive previews.
             </p>
-            <button className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 flex items-center mx-auto">
+            <button
+              onClick={handleSetAllNotifications}
+              disabled={bulkNotifying || filteredMovies.length === 0}
+              className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 disabled:hover:scale-100 flex items-center mx-auto"
+            >
               <Target className="w-5 h-5 mr-2" />
-              Set All Notifications
+              {bulkNotifying ? "Setting Notifications..." : "Set All Notifications"}
               <ArrowRight className="w-5 h-5 ml-2" />
             </button>
           </div>

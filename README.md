@@ -319,6 +319,18 @@ Then set `REDIS_URL=redis://redis:6379` in the backend environment block.
 
 ---
 
+## CI/CD
+
+GitHub Actions is configured through [`.github/workflows/ci-cd.yml`](./.github/workflows/ci-cd.yml).
+
+- Pull requests to `main` run backend tests plus frontend lint and build
+- Pushes to `main` also build and publish Docker images to GHCR
+- Production deploys can be triggered automatically with `BACKEND_DEPLOY_WEBHOOK_URL` and `FRONTEND_DEPLOY_WEBHOOK_URL`
+
+See [`.github/CI_CD_SETUP.md`](./.github/CI_CD_SETUP.md) for the required GitHub variables, secrets, and recommended branch protection settings.
+
+---
+
 ## API Reference
 
 | Method | Route | Auth | Description |
