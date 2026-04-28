@@ -109,6 +109,7 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           NODE_ENV: production
           PORT: 3000
+          PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
       - name: Upload artifact
         if: (needs.changes.outputs.backend == 'true' || needs.changes.outputs.pipeline == 'true') && github.ref == 'refs/heads/main'
@@ -156,6 +157,7 @@ jobs:
         run: |
           npm install --global vercel
           vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+          # Force Vercel to use the default build command if it fails to auto-detect
           vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -164,6 +166,8 @@ jobs:
           VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
           VITE_TMDB_IMAGE_BASE_URL: ${{ secrets.VITE_TMDB_IMAGE_BASE_URL }}
           VITE_CURRENCY: ${{ secrets.VITE_CURRENCY }}
+          # Ensure path to sh and other tools is available
+          PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
       - name: Upload artifact
         if: (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.pipeline == 'true') && github.ref == 'refs/heads/main'
