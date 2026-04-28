@@ -152,17 +152,10 @@ jobs:
         if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.pipeline == 'true'
         run: npm run lint
 
-      - name: Build and Pull Vercel Config
+      - name: Build Frontend
         if: github.ref == 'refs/heads/main'
-        shell: bash
-        run: |
-          npm install --global vercel
-          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-          # Force Vercel to use the default build command if it fails to auto-detect
-          vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: npm run build
         env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.FRONTEND_PROJECT_ID }}
           VITE_BASE_URL: ${{ secrets.VITE_BASE_URL }}
           VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
           VITE_TMDB_IMAGE_BASE_URL: ${{ secrets.VITE_TMDB_IMAGE_BASE_URL }}
@@ -172,8 +165,8 @@ jobs:
         if: (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.pipeline == 'true') && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-vercel-dist
-          path: frontend/.vercel/output
+          name: frontend-dist
+          path: frontend/dist
           if-no-files-found: error
 
   # We are now using Vercel native flow. Docker job is kept but can be disabled if not needed for other registries.
@@ -207,8 +200,8 @@ jobs:
         if: matrix.service == 'frontend'
         uses: actions/download-artifact@v4
         with:
-          name: frontend-vercel-dist
-          path: frontend/.vercel/output
+          name: frontend-dist
+          path: frontend/dist
 
       - uses: docker/setup-buildx-action@v3
 
@@ -268,11 +261,11 @@ jobs:
           name: backend-vercel-dist
           path: backend/.vercel/output
 
-      - name: Download frontend prebuilt
+      - name: Download frontend build artifact
         uses: actions/download-artifact@v4
         with:
-          name: frontend-vercel-dist
-          path: frontend/.vercel/output
+          name: frontend-dist
+          path: frontend/dist
 
       - name: Deploy Backend to Vercel
         working-directory: backend
@@ -283,7 +276,7 @@ jobs:
 
       - name: Deploy Frontend to Vercel
         working-directory: frontend
-        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.FRONTEND_PROJECT_ID }}
