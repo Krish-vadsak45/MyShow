@@ -259,15 +259,18 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.FRONTEND_PROJECT_ID }}
 
       - name: Health check
+        if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.pipeline == 'true'
+        shell: bash
         run: |
           echo "Starting health check..."
+          health_url="${{ steps.deploy_backend.outputs.url }}/api/health"
           # Retry 5 times, every 10 seconds
           for i in {1..5}; do
-            if curl --fail -s https://myshow-production.vercel.app/api/health; then
+            if curl --fail -s "$health_url"; then
               echo "Health check passed!"
               exit 0
             fi
-            echo "Health check failed, retrying in 10s... ($i/5)"
+            echo "Health check failed for $health_url, retrying in 10s... ($i/5)"
             sleep 10
           done
           echo "Health check failed after 5 attempts."
