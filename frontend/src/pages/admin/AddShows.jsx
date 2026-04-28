@@ -108,7 +108,7 @@ const AddShows = () => {
         return toast.error("Please select a date and time");
       }
       const showInput = Object.entries(dateTimeSelection).map(
-        ([date, time]) => ({ date, time })
+        ([date, time]) => ({ date, time }),
       );
       const payload = {
         movieId: selectedMovie,
@@ -173,7 +173,7 @@ const AddShows = () => {
         scrollTimeoutRef.current = setTimeout(checkScrollPosition, 300);
       }
     },
-    [isMobile, checkScrollPosition]
+    [isMobile, checkScrollPosition],
   );
 
   const scrollLeft = useCallback(() => smoothScroll("left"), [smoothScroll]);
@@ -256,7 +256,7 @@ const AddShows = () => {
               key={movie.id}
               onClick={() =>
                 setSelectedMovie((prev) =>
-                  prev === movie.id ? null : movie.id
+                  prev === movie.id ? null : movie.id,
                 )
               }
               className={`relative max-w-40 flex-shrink-0 cursor-pointer group-hover:not-hover:opacity-40 hover:translate-y-1 transition duration-300`}

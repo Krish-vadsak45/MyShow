@@ -193,7 +193,7 @@ text-nowrap"
                     {currency +
                       bookings.reduce(
                         (sum, booking) => sum + booking.amount,
-                        0
+                        0,
                       )}
                   </p>
                 </div>

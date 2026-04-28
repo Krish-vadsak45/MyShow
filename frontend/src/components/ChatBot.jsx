@@ -61,7 +61,10 @@ export default function ChatBot({ onClose }) {
         content: m.content,
       }));
 
-      const response = await axios.post("/api/agent", { message: input, history });
+      const response = await axios.post("/api/agent", {
+        message: input,
+        history,
+      });
 
       const data = response.data;
       console.log("API response:", data);

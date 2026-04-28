@@ -1,13 +1,7 @@
 import { Link } from "react-router-dom";
 import { Film } from "lucide-react";
 import BlurCircle from "./BlurCircle";
-const NotExist = ({
-  title,
-  message,
-  buttonLabel,
-  redirectPath,
-  icon,
-}) => {
+const NotExist = ({ title, message, buttonLabel, redirectPath, icon }) => {
   const EmptyStateIcon = icon || Film;
 
   return (

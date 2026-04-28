@@ -65,7 +65,9 @@ const Upcoming = () => {
       return;
     }
 
-    const pendingMovies = filteredMovies.filter((movie) => !notify[movie.tmdbId]);
+    const pendingMovies = filteredMovies.filter(
+      (movie) => !notify[movie.tmdbId],
+    );
     if (!pendingMovies.length) {
       toast.success("Notifications are already set for these movies");
       return;
@@ -125,15 +127,17 @@ const Upcoming = () => {
           </p>
 
           <div className="flex flex-wrap justify-center gap-4 mb-12">
-            {["Early Access", "Exclusive Previews", "Best Seats"].map((feature) => (
-              <div
-                key={feature}
-                className="flex items-center bg-gray-900/50 backdrop-blur-sm rounded-full px-6 py-3 border border-gray-800 hover:border-red-500/50 transition-colors duration-300"
-              >
-                <Sparkles className="w-4 h-4 text-red-400 mr-2" />
-                <span className="text-gray-300">{feature}</span>
-              </div>
-            ))}
+            {["Early Access", "Exclusive Previews", "Best Seats"].map(
+              (feature) => (
+                <div
+                  key={feature}
+                  className="flex items-center bg-gray-900/50 backdrop-blur-sm rounded-full px-6 py-3 border border-gray-800 hover:border-red-500/50 transition-colors duration-300"
+                >
+                  <Sparkles className="w-4 h-4 text-red-400 mr-2" />
+                  <span className="text-gray-300">{feature}</span>
+                </div>
+              ),
+            )}
           </div>
         </div>
       </section>
@@ -222,7 +226,9 @@ const Upcoming = () => {
               className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 disabled:hover:scale-100 flex items-center mx-auto"
             >
               <Target className="w-5 h-5 mr-2" />
-              {bulkNotifying ? "Setting Notifications..." : "Set All Notifications"}
+              {bulkNotifying
+                ? "Setting Notifications..."
+                : "Set All Notifications"}
               <ArrowRight className="w-5 h-5 ml-2" />
             </button>
           </div>

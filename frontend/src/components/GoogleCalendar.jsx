@@ -11,25 +11,25 @@ const GoogleCalendar = ({ booking }) => {
   // Parse start and end time in UTC format for Google Calendar
   const startDate = new Date(booking.show.showDateTime);
   const endDate = new Date(
-    startDate.getTime() + (booking.show.movie.runtime || 120) * 60000
+    startDate.getTime() + (booking.show.movie.runtime || 120) * 60000,
   ); // fallback 120min
 
   const format = (d) =>
     `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(
-      d.getUTCDate()
+      d.getUTCDate(),
     )}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00Z`;
 
   const start = format(startDate);
   const end = format(endDate);
 
   const title = encodeURIComponent(
-    `Movie: ${booking.show.movie.title} - Show Booking`
+    `Movie: ${booking.show.movie.title} - Show Booking`,
   );
   const details = encodeURIComponent(
     `Your movie booking for ${booking.show.movie.title} at ${dateFormat(
-      booking.show.showDateTime
+      booking.show.showDateTime,
     )}
-    .`
+    .`,
   );
   const location = encodeURIComponent("INOX Cinema"); // Change if you have actual cinema name
 
