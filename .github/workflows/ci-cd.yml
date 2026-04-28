@@ -91,42 +91,6 @@ jobs:
         if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.pipeline == 'true'
         run: npm test
 
-      - name: Build Vercel Backend
-        if: (needs.changes.outputs.backend == 'true' || needs.changes.outputs.pipeline == 'true') && github.ref == 'refs/heads/main'
-        shell: bash
-        run: |
-          npm install --global vercel
-          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-          vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.BACKEND_PROJECT_ID }}
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
-          REDIS_URL: ${{ secrets.REDIS_URL }}
-          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-          CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
-          INNGEST_EVENT_KEY: ${{ secrets.INNGEST_EVENT_KEY }}
-          INNGEST_SIGNING_KEY: ${{ secrets.INNGEST_SIGNING_KEY }}
-          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-          STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
-          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
-          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          NODE_ENV: production
-          PORT: 3000
-
-      - name: Upload artifact
-        if: (needs.changes.outputs.backend == 'true' || needs.changes.outputs.pipeline == 'true') && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-vercel-dist
-          path: backend/.vercel/output
-          if-no-files-found: error
-
   frontend-ci:
     name: Frontend CI
     runs-on: ubuntu-latest
@@ -263,31 +227,32 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
-      - name: Download backend prebuilt
-        if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.pipeline == 'true'
-        uses: actions/download-artifact@v4
-        with:
-          name: backend-vercel-dist
-          path: backend/.vercel/output
-
-      - name: Download frontend build artifact
-        if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.pipeline == 'true'
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-dist
-          path: frontend/dist
-
       - name: Deploy Backend to Vercel
         if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.pipeline == 'true'
-        working-directory: backend
-        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.BACKEND_PROJECT_ID }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
+          INNGEST_EVENT_KEY: ${{ secrets.INNGEST_EVENT_KEY }}
+          INNGEST_SIGNING_KEY: ${{ secrets.INNGEST_SIGNING_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          NODE_ENV: production
+          PORT: 3000
 
       - name: Deploy Frontend to Vercel
         if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.pipeline == 'true'
-        working-directory: frontend
         run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
