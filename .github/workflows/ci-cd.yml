@@ -228,8 +228,19 @@ jobs:
         run: npm install --global vercel@latest
 
       - name: Deploy Backend to Vercel
+        id: deploy_backend
         if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.pipeline == 'true'
-        run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
+        shell: bash
+        run: |
+          deploy_output=$(vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes 2>&1)
+          echo "$deploy_output"
+          deployment_url=$(echo "$deploy_output" | grep -Eo 'https://[^[:space:]]+\.vercel\.app' | head -n 1)
+          if [ -z "$deployment_url" ]; then
+            echo "Failed to capture backend deployment URL from Vercel output."
+            exit 1
+          fi
+          echo "url=${deployment_url}" >> "$GITHUB_OUTPUT"
+          echo "Backend deployed to ${deployment_url}"
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.BACKEND_PROJECT_ID }}
