@@ -92,7 +92,7 @@ jobs:
         run: npm test
 
       - name: Build Vercel Backend
-        if: github.ref == 'refs/heads/main'
+        if: (needs.changes.outputs.backend == 'true' || needs.changes.outputs.pipeline == 'true') && github.ref == 'refs/heads/main'
         shell: bash
         run: |
           npm install --global vercel
@@ -161,7 +161,7 @@ jobs:
         run: npm run lint
 
       - name: Build Frontend
-        if: github.ref == 'refs/heads/main'
+        if: (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.pipeline == 'true') && github.ref == 'refs/heads/main'
         run: npm run build
         env:
           VITE_BASE_URL: ${{ secrets.VITE_BASE_URL }}
@@ -252,8 +252,8 @@ jobs:
   deploy:
     name: Deploy to Vercel
     runs-on: ubuntu-latest
-    needs: [backend-ci, frontend-ci]
-    if: github.ref == 'refs/heads/main'
+    needs: [changes, backend-ci, frontend-ci]
+    if: github.ref == 'refs/heads/main' && needs.changes.outputs.any == 'true'
     environment:
       name: production
 
@@ -264,18 +264,21 @@ jobs:
         run: npm install --global vercel@latest
 
       - name: Download backend prebuilt
+        if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.pipeline == 'true'
         uses: actions/download-artifact@v4
         with:
           name: backend-vercel-dist
           path: backend/.vercel/output
 
       - name: Download frontend build artifact
+        if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.pipeline == 'true'
         uses: actions/download-artifact@v4
         with:
           name: frontend-dist
           path: frontend/dist
 
       - name: Deploy Backend to Vercel
+        if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.pipeline == 'true'
         working-directory: backend
         run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
@@ -283,6 +286,7 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.BACKEND_PROJECT_ID }}
 
       - name: Deploy Frontend to Vercel
+        if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.pipeline == 'true'
         working-directory: frontend
         run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
