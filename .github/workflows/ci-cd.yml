@@ -232,15 +232,15 @@ jobs:
         if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.pipeline == 'true'
         shell: bash
         run: |
-          deploy_output=$(vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes 2>&1)
-          echo "$deploy_output"
-          deployment_url=$(echo "$deploy_output" | grep -Eo 'https://[^[:space:]]+\.vercel\.app' | head -n 1)
-          if [ -z "$deployment_url" ]; then
-            echo "Failed to capture backend deployment URL from Vercel output."
+          # Use --yes and --prod for production deployment
+          # Capture only the last line which usually contains the URL
+          deploy_url=$(vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes)
+          if [ -z "$deploy_url" ]; then
+            echo "Failed to capture backend deployment URL."
             exit 1
           fi
-          echo "url=${deployment_url}" >> "$GITHUB_OUTPUT"
-          echo "Backend deployed to ${deployment_url}"
+          echo "url=${deploy_url}" >> "$GITHUB_OUTPUT"
+          echo "Backend deployed to ${deploy_url}"
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.BACKEND_PROJECT_ID }}
@@ -274,15 +274,28 @@ jobs:
         shell: bash
         run: |
           echo "Starting health check..."
-          health_url="${{ steps.deploy_backend.outputs.url }}/api/health"
+          # Deploy URL might be a preview URL or contain a trailing slash
+          # We check both /api/health and /health
+          BASE_URL=$(echo "${{ steps.deploy_backend.outputs.url }}" | sed 's/\/$//')
+
           # Retry 5 times, every 10 seconds
           for i in {1..5}; do
-            if curl --fail -s "$health_url"; then
-              echo "Health check passed!"
+            echo "Attempt $i: Checking $BASE_URL/api/health"
+            if curl --fail -s "$BASE_URL/api/health"; then
+              echo "Health check passed on /api/health!"
               exit 0
             fi
-            echo "Health check failed for $health_url, retrying in 10s... ($i/5)"
+            
+            echo "Attempt $i: Checking $BASE_URL/health"
+            if curl --fail -s "$BASE_URL/health"; then
+              echo "Health check passed on /health!"
+              exit 0
+            fi
+            
+            echo "Health check failed, retrying in 10s... ($i/5)"
             sleep 10
           done
           echo "Health check failed after 5 attempts."
+          # Optionally list the headers/response of the last failure to debug
+          curl -i "$BASE_URL/api/health" || true
           exit 1

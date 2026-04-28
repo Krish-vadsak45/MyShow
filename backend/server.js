@@ -23,8 +23,6 @@ import authRoutes from "./routes/authRoutes.js";
 const app = express();
 const port = process.env.PORT;
 
-await connectDB();
-
 // Enterprise Redis Rate Limiters
 const globalLimiter = rateLimiter("global", 200, 15 * 60);
 const authLimiter = rateLimiter("auth", 20, 15 * 60);
@@ -68,6 +66,21 @@ app.get("/", (req, res) => {
   res.send("server is live!");
 });
 app.get("/api/health", (req, res) => res.status(200).send("OK"));
+
+// Keep health endpoints lightweight on serverless platforms.
+app.use(async (req, res, next) => {
+  if (req.path === "/" || req.path === "/health" || req.path === "/api/health") {
+    return next();
+  }
+
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
 app.use("/api/inngest", serve({ client: inngest, functions }));
 app.use("/api/show", showRouter);
 app.use("/api/booking", bookingRouter);
@@ -90,6 +103,10 @@ app.use((err, req, res, _next) => {
   });
 });
 
-app.listen(port, () =>
-  logger.info(`server listening at http://localhost:${port}`),
-);
+if (!process.env.VERCEL) {
+  app.listen(port, () =>
+    logger.info(`server listening at http://localhost:${port}`),
+  );
+}
+
+export default app;
