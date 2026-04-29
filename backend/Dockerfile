@@ -7,7 +7,9 @@ RUN npm ci --omit=dev
 
 COPY . .
 
-FROM gcr.io/distroless/nodejs20-debian12
+FROM alpine:3.23 AS runtime
+
+RUN apk add --no-cache nodejs
 
 WORKDIR /app
 ENV NODE_ENV=production
@@ -16,4 +18,4 @@ COPY --from=deps /app /app
 
 EXPOSE 4000
 
-CMD ["server.js"]
+CMD ["node", "server.js"]
