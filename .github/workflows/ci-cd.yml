@@ -173,8 +173,14 @@ jobs:
         shell: bash
         run: echo "value=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
 
+      - name: Skip unchanged Docker target
+        if: |
+          (matrix.service == 'backend' && needs.changes.outputs.backend != 'true' && needs.changes.outputs.pipeline != 'true') ||
+          (matrix.service == 'frontend' && needs.changes.outputs.frontend != 'true' && needs.changes.outputs.pipeline != 'true')
+        run: echo "Skipping Docker steps for ${{ matrix.service }} because it was not changed in this run."
+
       - name: Download frontend dist for Docker
-        if: matrix.service == 'frontend'
+        if: matrix.service == 'frontend' && (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.pipeline == 'true')
         uses: actions/download-artifact@v4
         with:
           name: frontend-dist
@@ -189,6 +195,9 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build image (single build)
+        if: |
+          (matrix.service == 'backend' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.pipeline == 'true')) ||
+          (matrix.service == 'frontend' && (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.pipeline == 'true'))
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
@@ -199,6 +208,9 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
       - name: Security scan (fail on vuln)
+        if: |
+          (matrix.service == 'backend' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.pipeline == 'true')) ||
+          (matrix.service == 'frontend' && (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.pipeline == 'true'))
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.REGISTRY }}/${{ steps.registry_owner.outputs.value }}/${{ matrix.image }}:${{ github.sha }}
@@ -206,7 +218,12 @@ jobs:
           exit-code: "1"
 
       - name: Push image (only if safe)
-        if: success()
+        if: |
+          success() &&
+          (
+            (matrix.service == 'backend' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.pipeline == 'true')) ||
+            (matrix.service == 'frontend' && (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.pipeline == 'true'))
+          )
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
