@@ -217,7 +217,11 @@ jobs:
     name: Deploy to Vercel
     runs-on: ubuntu-latest
     needs: [changes, backend-ci, frontend-ci]
-    if: github.ref == 'refs/heads/main' && needs.changes.outputs.any == 'true'
+    # SECURITY: Only allow deployments from the main branch and by authorized users
+    if: |
+      github.ref == 'refs/heads/main' && 
+      needs.changes.outputs.any == 'true' &&
+      (github.event_name != 'workflow_dispatch' || github.actor == github.repository_owner)
     environment:
       name: production
 
@@ -270,7 +274,9 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.FRONTEND_PROJECT_ID }}
 
       - name: Health check
-        if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.pipeline == 'true'
+        # Temporarily disabled because Vercel deployment protection returns 401
+        # to unauthenticated CI requests against the deployed backend URL.
+        if: ${{ false }}
         shell: bash
         run: |
           echo "Starting health check..."
