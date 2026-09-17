@@ -8,6 +8,7 @@ import Show from "../models/show.model.js";
 import UpcomingMovie from "../models/upcomingMovie.model.js";
 import sendEmail from "../config/nodeMailer.js";
 import redis from "../config/redis.js";
+import axios from "axios";
 
 // Create a client to send and receive events
 export const inngest = new Inngest({ id: "movie-ticket-booking" });
@@ -519,6 +520,166 @@ const refreshUserRecommendations = inngest.createFunction(
   },
 );
 
+// ─── Automated TMDB Movie Sync ───────────────────────────────────────────────────
+
+// Helper function to create or update movie with full TMDB data
+const createOrUpdateMovie = async (movieId) => {
+  const existingMovie = await Movie.findById(movieId);
+  if (existingMovie) return existingMovie;
+
+  const [movieDetailResponse, movieCreditResponse, movieTrailerResponse] =
+    await Promise.all([
+      axios.get(`https://api.themoviedb.org/3/movie/${movieId}`, {
+        headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
+      }),
+      axios.get(`https://api.themoviedb.org/3/movie/${movieId}/credits`, {
+        headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
+      }),
+      axios.get(`https://api.themoviedb.org/3/movie/${movieId}/videos`, {
+        headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
+      }),
+    ]);
+
+  const movieApiData = movieDetailResponse.data;
+  const movieCreditData = movieCreditResponse.data;
+  const movieTrailerData = movieTrailerResponse.data;
+  const trailer = movieTrailerData.results.find(
+    (vid) => vid.type === "Trailer" && vid.site === "YouTube",
+  );
+
+  const movie = await Movie.create({
+    _id: movieId,
+    title: movieApiData.title,
+    overview: movieApiData.overview,
+    poster_path: movieApiData.poster_path,
+    backdrop_path: movieApiData.backdrop_path,
+    release_date: movieApiData.release_date,
+    original_language: movieApiData.original_language,
+    tagline: movieApiData.tagline || "",
+    genres: movieApiData.genres,
+    cast: movieCreditData.cast,
+    crew: movieCreditData.crew,
+    vote_average: movieApiData.vote_average,
+    runtime: movieApiData.runtime,
+    trailerKey: trailer ? trailer.key : null,
+  });
+
+  return movie;
+};
+
+// Helper function to generate realistic show times for the next 7 days
+const generateShowSlots = (movieId, showPrice = 200) => {
+  const showsToCreate = [];
+  const today = new Date();
+
+  // Generate shows for next 7 days with random show times
+  for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+    const showDate = new Date(today);
+    showDate.setDate(today.getDate() + dayOffset);
+    const dateStr = showDate.toISOString().split("T")[0];
+
+    // Generate random show time between 10:00 and 22:00
+    const hour = Math.floor(Math.random() * 13) + 10; // 10-22
+    const minute = Math.random() < 0.5 ? "00" : "30"; // Either :00 or :30
+    const time = `${hour.toString().padStart(2, "0")}:${minute}`;
+
+    showsToCreate.push({
+      movie: movieId,
+      showDateTime: new Date(`${dateStr}T${time}`),
+      showPrice,
+      occupiedSeats: {},
+    });
+  }
+
+  return showsToCreate;
+};
+
+// Syncs "now playing" movies from TMDB to local database every 6 days.
+// This ensures the demo always has fresh, bookable movies available.
+const syncTMDBMovies = inngest.createFunction(
+  { id: "sync-tmdb-movies", retries: 2 },
+  { cron: "0 4 */6 * *" }, // Runs every 6 days at 4 AM UTC
+  async ({ step }) => {
+    const result = await step.run("fetch-and-sync-movies", async () => {
+      try {
+        // Fetch now playing movies from TMDB
+        const { data } = await axios.get(
+          "https://api.themoviedb.org/3/movie/now_playing",
+          {
+            accept: "application/json",
+            headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
+          },
+        );
+
+        const movies = data.results.slice(0, 8); // Sync top 8 movies
+        let moviesCreated = 0;
+        let showsCreated = 0;
+
+        for (const movieData of movies) {
+          const movieId = movieData.id;
+
+          // Create or update movie
+          await createOrUpdateMovie(movieId);
+          moviesCreated++;
+
+          // Check if shows already exist for this movie
+          const existingShows = await Show.find({ movie: movieId });
+          const hasRecentShows = existingShows.some(
+            (show) => show.showDateTime > new Date(),
+          );
+
+          // Only create new shows if no recent shows exist
+          if (!hasRecentShows) {
+            const showsToCreate = generateShowSlots(movieId, 200);
+            await Show.insertMany(showsToCreate);
+            showsCreated += showsToCreate.length;
+          }
+        }
+
+        // Bust cache so new shows appear immediately
+        let cursor = "0";
+        try {
+          do {
+            const [nextCursor, keys] = await redis.scan(
+              cursor,
+              "MATCH",
+              "shows:list:*",
+              "COUNT",
+              100,
+            );
+            cursor = nextCursor;
+            if (keys.length > 0) {
+              await redis.del(...keys);
+            }
+          } while (cursor !== "0");
+        } catch (err) {
+          logger.error({ err }, "Error invalidating shows cache with SCAN");
+        }
+
+        // Bust admin shows cache
+        await redis.del("admin:shows").catch(() => {});
+
+        logger.info(
+          { moviesCreated, showsCreated },
+          "TMDB movie sync completed",
+        );
+
+        return {
+          success: true,
+          moviesCreated,
+          showsCreated,
+          message: `Synced ${moviesCreated} movies with ${showsCreated} shows`,
+        };
+      } catch (error) {
+        logger.error({ err: error }, "TMDB movie sync failed");
+        throw error;
+      }
+    });
+
+    return result;
+  },
+);
+
 // ─── Exports ─────────────────────────────────────────────────────────────────
 
 export const functions = [
@@ -538,4 +699,6 @@ export const functions = [
   preComputeAnalytics,
   // Recommendation cache pre-warming (after payment confirmed)
   refreshUserRecommendations,
+  // Automated TMDB movie sync (every 24 hours cron)
+  syncTMDBMovies,
 ];
