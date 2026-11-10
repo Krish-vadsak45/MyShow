@@ -611,11 +611,11 @@ const generateShowSlots = (movieId, showPrice = 200) => {
   return showsToCreate;
 };
 
-// Syncs "now playing" movies from TMDB to local database every 5 minutes.
+// Syncs "now playing" movies from TMDB to local database every 6 days.
 // This ensures the demo always has fresh, bookable movies available.
 const syncTMDBMovies = inngest.createFunction(
   { id: "sync-tmdb-movies", retries: 2 },
-  { cron: "*/5 * * * *" }, // Runs every 5 minutes
+  { cron: "0 4 */6 * *" }, // Runs every 6 days at 4 AM UTC
   async ({ step }) => {
     const result = await step.run("fetch-and-sync-movies", async () => {
       try {
@@ -719,6 +719,6 @@ export const functions = [
   preComputeAnalytics,
   // Recommendation cache pre-warming (after payment confirmed)
   refreshUserRecommendations,
-  // Automated TMDB movie sync (every 5 minutes cron)
+  // Automated TMDB movie sync (every 6 days cron)
   syncTMDBMovies,
 ];
