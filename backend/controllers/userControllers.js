@@ -3,6 +3,7 @@ import logger from "../config/logger.js";
 import Booking from "../models/booking.model.js";
 import Movie from "../models/movie.model.js";
 import redis, { getCachedData } from "../config/redis.js";
+import { clerkBreaker } from "../config/circuitBreakers.js";
 
 const USER_BOOKINGS_TTL = 10 * 60; // 10 minutes
 const USER_FAVOURITES_TTL = 30 * 60; // 30 minutes
@@ -48,16 +49,44 @@ export const updateFavourite = async (req, res) => {
       return res.json({ success: false, message: "Authentication required" });
     }
 
-    const user = await clerkClient.users.getUser(userId);
-    const favourites = user.privateMetadata.favourite ?? [];
+    let user;
+    try {
+      user = await clerkBreaker.fire(async () => {
+        return await clerkClient.users.getUser(userId);
+      });
+    } catch (breakerErr) {
+      logger.error(
+        { err: breakerErr?.message, userId },
+        "Clerk circuit breaker tripped in updateFavourite",
+      );
+      return res.status(503).json({
+        success: false,
+        message: "Identity service temporarily unavailable. Please try again shortly.",
+      });
+    }
+
+    const favourites = user.privateMetadata?.favourite ?? [];
 
     const updated = favourites.includes(movieId)
       ? favourites.filter((item) => item !== movieId)
       : [...favourites, movieId];
 
-    await clerkClient.users.updateUserMetadata(userId, {
-      privateMetadata: { ...user.privateMetadata, favourite: updated },
-    });
+    try {
+      await clerkBreaker.fire(async () => {
+        return await clerkClient.users.updateUserMetadata(userId, {
+          privateMetadata: { ...user.privateMetadata, favourite: updated },
+        });
+      });
+    } catch (breakerErr) {
+      logger.error(
+        { err: breakerErr?.message, userId },
+        "Clerk circuit breaker tripped updating user metadata",
+      );
+      return res.status(503).json({
+        success: false,
+        message: "Failed to persist favourite update due to identity provider degradation.",
+      });
+    }
 
     // Invalidate caches
     await redis.del(`user:favourite:${userId}`);
@@ -82,10 +111,21 @@ export const getFavourite = async (req, res) => {
     const cached = await getCachedData(cacheKey);
     if (cached) return res.json(cached);
 
-    const user = await clerkClient.users.getUser(userId);
-    const favourites = user.privateMetadata.favourite || [];
+    let favourites = [];
+    try {
+      const user = await clerkBreaker.fire(async () => {
+        return await clerkClient.users.getUser(userId);
+      });
+      favourites = user.privateMetadata?.favourite || [];
+    } catch (breakerErr) {
+      logger.warn(
+        { err: breakerErr?.message, userId },
+        "Clerk circuit breaker tripped in getFavourite — returning empty favourites fallback",
+      );
+      return res.json({ success: true, movie: [], degraded: true });
+    }
 
-    //Get movies from database
+    // Get movies from database
     const movie = await Movie.find({ _id: { $in: favourites } });
 
     const payload = { success: true, movie };

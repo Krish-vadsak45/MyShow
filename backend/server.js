@@ -55,7 +55,12 @@ app.use(
   }),
 );
 app.use(clerkMiddleware());
-app.use("/api/", globalLimiter);
+app.use("/api/", (req, res, next) => {
+  if (req.path.startsWith("/inngest")) {
+    return next();
+  }
+  return globalLimiter(req, res, next);
+});
 app.use("/api/auth", authLimiter);
 app.use("/api/booking/create", bookingLimiter);
 

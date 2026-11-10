@@ -3,6 +3,7 @@ import logger from "../config/logger.js";
 import UpcomingMovie from "../models/upcomingMovie.model.js";
 import redis, { getOrSetCache } from "../config/redis.js";
 import { inngest } from "../inngest/index.js";
+import { tmdbBreaker } from "../config/circuitBreakers.js";
 
 const UPCOMING_CACHE_KEY = "upcoming:movies";
 const UPCOMING_CACHE_TTL = 60 * 60; // 1 hour
@@ -22,24 +23,52 @@ export const fetchUpcoming = async (_req, res) => {
         .toISOString()
         .slice(0, 10)}`;
 
-      const [{ data }, dbMovies] = await Promise.all([
-        axios.get(url, {
-          headers: {
-            Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
-            accept: "application/json",
-          },
-        }),
-        UpcomingMovie.find(
-          { releaseDate: { $gte: from, $lte: to } },
-          { tmdbId: 1, notifyUsers: 1 },
-        ),
-      ]);
+      let data;
+      let dbMovies = [];
+      try {
+        const [tmdbResponse, existingDbMovies] = await Promise.all([
+          tmdbBreaker.fire(async () => {
+            return await axios.get(url, {
+              headers: {
+                Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
+                accept: "application/json",
+              },
+              timeout: 4500,
+            });
+          }),
+          UpcomingMovie.find(
+            { releaseDate: { $gte: from, $lte: to } },
+            { tmdbId: 1, notifyUsers: 1 },
+          ),
+        ]);
+        data = tmdbResponse.data;
+        dbMovies = existingDbMovies;
+      } catch (breakerErr) {
+        logger.warn(
+          { err: breakerErr?.message },
+          "TMDB breaker tripped or call failed in fetchUpcoming — executing local DB fallback",
+        );
+        const fallbackMovies = await UpcomingMovie.find({
+          releaseDate: { $gte: today },
+        }).limit(20);
+
+        return fallbackMovies.map((m) => ({
+          tmdbId: m.tmdbId,
+          title: m.title,
+          posterPath: m.posterPath,
+          releaseDate: m.releaseDate,
+          popularity: 0,
+          voteAverage: 0,
+          notifyCount: m.notifyUsers ? m.notifyUsers.length : 0,
+          degraded: true,
+        }));
+      }
 
       const notifyMap = new Map(
         dbMovies.map((m) => [m.tmdbId, m.notifyUsers.length]),
       );
 
-      if (data.results.length > 0) {
+      if (data.results && data.results.length > 0) {
         await UpcomingMovie.bulkWrite(
           data.results.map((m) => ({
             updateOne: {
@@ -58,7 +87,7 @@ export const fetchUpcoming = async (_req, res) => {
         );
       }
 
-      return data.results.map((m) => ({
+      return (data.results || []).map((m) => ({
         tmdbId: m.id,
         title: m.title,
         posterPath: m.poster_path,

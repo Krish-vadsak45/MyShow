@@ -4,6 +4,7 @@ import Booking from "../models/booking.model.js";
 import Show from "../models/show.model.js";
 import { clerkClient } from "@clerk/express";
 import redis from "../config/redis.js";
+import { clerkBreaker } from "../config/circuitBreakers.js";
 
 const RECOMMENDATION_CACHE_TTL = 15 * 60; // 15 minutes
 
@@ -26,7 +27,17 @@ export const getPersonalizedRecommendations = async (req, res) => {
     // 1b. Get user's favourite movies (movie IDs are in user.privateMetadata.favourite)
     let favouriteMovies = [];
     let favouriteMovieIds = [];
-    const user = await clerkClient.users.getUser(userId);
+    let user = null;
+    try {
+      user = await clerkBreaker.fire(async () => {
+        return await clerkClient.users.getUser(userId);
+      });
+    } catch (breakerErr) {
+      logger.warn(
+        { err: breakerErr?.message, userId },
+        "Clerk circuit breaker tripped in recommendationController — proceeding with bookings signal only",
+      );
+    }
     if (
       user?.privateMetadata?.favourite &&
       Array.isArray(user.privateMetadata.favourite) &&

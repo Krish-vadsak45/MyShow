@@ -16,6 +16,14 @@
 
 ---
 
+## High-Level System Architecture
+
+[![MyShow System Architecture](./assets/architecture.png)](https://www.figma.com/board/GHMBNluahpX6vg0SBGihea)
+
+> 💡 **Interactive Architecture**: Click the diagram above or [**Open in FigJam**](https://www.figma.com/board/GHMBNluahpX6vg0SBGihea) to pan left/right, zoom in/out with 100% vector clarity, and inspect individual layers.
+
+---
+
 ## The Problem It Solves
 
 Online movie booking is broken in three key ways — MyShow fixes all of them:

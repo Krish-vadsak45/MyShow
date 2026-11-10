@@ -4,6 +4,7 @@ import Booking from "../models/booking.model.js";
 import stripe from "stripe";
 import { inngest } from "../inngest/index.js";
 import redis from "../config/redis.js";
+import { stripeBreaker } from "../config/circuitBreakers.js";
 import z from "zod";
 
 const SEAT_LOCK_TTL = 5 * 60; // 5 minutes in seconds
@@ -207,16 +208,37 @@ export const createBooking = async (req, res) => {
       },
     ];
 
-    const session = await stripeInstance.checkout.sessions.create({
-      success_url: `${origin}/loading/mybookings`,
-      cancel_url: `${origin}/mybookings`,
-      line_items,
-      mode: "payment",
-      // userId is included so the webhook can bust per-user caches and
-      // trigger recommendation refresh without an extra DB read.
-      metadata: { bookingId: booking._id.toString(), userId },
-      expires_at: Math.floor(Date.now() / 1000) + 32 * 60,
-    });
+    let session;
+    try {
+      session = await stripeBreaker.fire(async () => {
+        return await stripeInstance.checkout.sessions.create({
+          success_url: `${origin}/loading/mybookings`,
+          cancel_url: `${origin}/mybookings`,
+          line_items,
+          mode: "payment",
+          metadata: { bookingId: booking._id.toString(), userId },
+          expires_at: Math.floor(Date.now() / 1000) + 32 * 60,
+        });
+      });
+    } catch (stripeErr) {
+      logger.error(
+        { err: stripeErr?.message },
+        "Stripe circuit breaker tripped or call failed in createBooking — releasing seats",
+      );
+      // Rollback claimed seats in DB so other customers can book them
+      const unsetSeats = {};
+      selectedSeats.forEach((seat) => {
+        unsetSeats[`occupiedSeats.${seat}`] = "";
+      });
+      await Show.updateOne({ _id: showId }, { $unset: unsetSeats });
+      await Booking.findByIdAndDelete(booking._id);
+
+      return res.status(503).json({
+        success: false,
+        message:
+          "Payment gateway is temporarily unavailable. Your reserved seats were released. Please try again shortly.",
+      });
+    }
 
     booking.paymentLink = session.url;
     await booking.save();

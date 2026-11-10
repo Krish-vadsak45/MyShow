@@ -5,6 +5,7 @@ import Show from "../models/show.model.js";
 import UpcomingMovie from "../models/upcomingMovie.model.js";
 import { inngest } from "../inngest/index.js";
 import redis, { getCachedData, getOrSetCache } from "../config/redis.js";
+import { tmdbBreaker } from "../config/circuitBreakers.js";
 import z from "zod";
 
 const SHOWS_CACHE_TTL = 10 * 60; // 10 minutes
@@ -72,18 +73,45 @@ const invalidateShowsCache = async () => {
   }
 };
 
-// API to get now playing movies from TMDB API
+// API to get now playing movies from TMDB API with Circuit Breaker and DB Fallback
 export const getNowPlayingMovies = async (_req, res) => {
   try {
     const fetchFresh = async () => {
-      const { data } = await axios.get(
-        "https://api.themoviedb.org/3/movie/now_playing",
-        {
-          accept: "application/json",
-          headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
-        },
-      );
-      return { success: true, movies: data.results };
+      try {
+        const { data } = await tmdbBreaker.fire(async () => {
+          return await axios.get(
+            "https://api.themoviedb.org/3/movie/now_playing",
+            {
+              accept: "application/json",
+              headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
+              timeout: 4500,
+            },
+          );
+        });
+        return { success: true, movies: data.results };
+      } catch (breakerErr) {
+        logger.warn(
+          { err: breakerErr?.message },
+          "TMDB breaker tripped or call failed in getNowPlayingMovies — executing local DB fallback",
+        );
+        const fallbackMovies = await Movie.find()
+          .sort({ release_date: -1 })
+          .limit(20);
+
+        return {
+          success: true,
+          degraded: true,
+          movies: fallbackMovies.map((m) => ({
+            id: m._id,
+            title: m.title,
+            poster_path: m.poster_path,
+            backdrop_path: m.backdrop_path,
+            vote_average: m.vote_average,
+            overview: m.overview,
+            release_date: m.release_date,
+          })),
+        };
+      }
     };
 
     const payload = await getOrSetCache(
@@ -137,18 +165,36 @@ export const addShow = async (req, res) => {
     let movie = await Movie.findById(movieId);
 
     if (!movie) {
-      const [movieDetailResponse, movieCreditResponse, movieTrailerResponse] =
-        await Promise.all([
-          axios.get(`https://api.themoviedb.org/3/movie/${movieId}`, {
-            headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
-          }),
-          axios.get(`https://api.themoviedb.org/3/movie/${movieId}/credits`, {
-            headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
-          }),
-          axios.get(`https://api.themoviedb.org/3/movie/${movieId}/videos`, {
-            headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
-          }),
-        ]);
+      let movieDetailResponse, movieCreditResponse, movieTrailerResponse;
+      try {
+        [movieDetailResponse, movieCreditResponse, movieTrailerResponse] =
+          await tmdbBreaker.fire(async () => {
+            return await Promise.all([
+              axios.get(`https://api.themoviedb.org/3/movie/${movieId}`, {
+                headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
+                timeout: 4500,
+              }),
+              axios.get(`https://api.themoviedb.org/3/movie/${movieId}/credits`, {
+                headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
+                timeout: 4500,
+              }),
+              axios.get(`https://api.themoviedb.org/3/movie/${movieId}/videos`, {
+                headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
+                timeout: 4500,
+              }),
+            ]);
+          });
+      } catch (breakerErr) {
+        logger.error(
+          { err: breakerErr?.message },
+          "TMDB circuit breaker tripped or call failed in addShow",
+        );
+        return res.status(503).json({
+          success: false,
+          message:
+            "TMDB service is temporarily unavailable to fetch movie details. Please try again shortly.",
+        });
+      }
 
       const movieApiData = movieDetailResponse.data;
       const movieCreditData = movieCreditResponse.data;

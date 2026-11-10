@@ -1,5 +1,6 @@
 import { clerkClient, verifyToken } from "@clerk/express";
 import logger from "../config/logger.js";
+import { clerkBreaker } from "../config/circuitBreakers.js";
 
 const getVerifiedUserId = async (req) => {
   const token = req.cookies?.__auth_token;
@@ -17,8 +18,25 @@ export const protectAdmin = async (req, res, next) => {
     if (!userId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
-    const user = await clerkClient.users.getUser(userId);
-    if (user.privateMetadata.role !== "admin") {
+
+    let user;
+    try {
+      user = await clerkBreaker.fire(async () => {
+        return await clerkClient.users.getUser(userId);
+      });
+    } catch (breakerErr) {
+      logger.warn(
+        { err: breakerErr?.message, userId },
+        "Clerk circuit breaker tripped in protectAdmin — fast-failing securely",
+      );
+      return res.status(503).json({
+        success: false,
+        isAdmin: false,
+        message: "Identity provider temporarily unavailable",
+      });
+    }
+
+    if (user.privateMetadata?.role !== "admin") {
       return res.json({
         success: false,
         isAdmin: false,
@@ -39,7 +57,20 @@ export const auth = async (req, res, next) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
     req.userId = userId;
-    req.user = await clerkClient.users.getUser(userId);
+
+    try {
+      req.user = await clerkBreaker.fire(async () => {
+        return await clerkClient.users.getUser(userId);
+      });
+    } catch (breakerErr) {
+      logger.warn(
+        { err: breakerErr?.message, userId },
+        "Clerk circuit breaker tripped in auth middleware — falling back to verified JWT identity",
+      );
+      // Fallback: token signature already verified by verifyToken, attach verified ID
+      req.user = { id: userId, privateMetadata: {} };
+    }
+
     next();
   } catch (error) {
     logger.error({ err: error }, "Auth middleware error");

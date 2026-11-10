@@ -9,6 +9,7 @@ import UpcomingMovie from "../models/upcomingMovie.model.js";
 import sendEmail from "../config/nodeMailer.js";
 import redis from "../config/redis.js";
 import axios from "axios";
+import { tmdbBreaker, clerkBreaker } from "../config/circuitBreakers.js";
 
 // Create a client to send and receive events
 export const inngest = new Inngest({ id: "movie-ticket-booking" });
@@ -446,13 +447,24 @@ const refreshUserRecommendations = inngest.createFunction(
       const now = new Date().toISOString();
 
       // Fetch booking history and favourite movie IDs in parallel
-      const [bookings, user] = await Promise.all([
-        Booking.find({ user: userId }).populate({
-          path: "show",
-          populate: { path: "movie" },
-        }),
-        clerkClient.users.getUser(userId),
-      ]);
+      const bookingsPromise = Booking.find({ user: userId }).populate({
+        path: "show",
+        populate: { path: "movie" },
+      });
+
+      const userPromise = clerkBreaker
+        .fire(async () => {
+          return await clerkClient.users.getUser(userId);
+        })
+        .catch((breakerErr) => {
+          logger.warn(
+            { err: breakerErr?.message, userId },
+            "Clerk circuit breaker tripped in refreshUserRecommendations — proceeding with bookings history only",
+          );
+          return null;
+        });
+
+      const [bookings, user] = await Promise.all([bookingsPromise, userPromise]);
 
       let favouriteMovies = [];
       if (user?.privateMetadata?.favourite?.length) {
@@ -528,17 +540,22 @@ const createOrUpdateMovie = async (movieId) => {
   if (existingMovie) return existingMovie;
 
   const [movieDetailResponse, movieCreditResponse, movieTrailerResponse] =
-    await Promise.all([
-      axios.get(`https://api.themoviedb.org/3/movie/${movieId}`, {
-        headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
-      }),
-      axios.get(`https://api.themoviedb.org/3/movie/${movieId}/credits`, {
-        headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
-      }),
-      axios.get(`https://api.themoviedb.org/3/movie/${movieId}/videos`, {
-        headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
-      }),
-    ]);
+    await tmdbBreaker.fire(async () => {
+      return await Promise.all([
+        axios.get(`https://api.themoviedb.org/3/movie/${movieId}`, {
+          headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
+          timeout: 4500,
+        }),
+        axios.get(`https://api.themoviedb.org/3/movie/${movieId}/credits`, {
+          headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
+          timeout: 4500,
+        }),
+        axios.get(`https://api.themoviedb.org/3/movie/${movieId}/videos`, {
+          headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
+          timeout: 4500,
+        }),
+      ]);
+    });
 
   const movieApiData = movieDetailResponse.data;
   const movieCreditData = movieCreditResponse.data;
@@ -594,22 +611,25 @@ const generateShowSlots = (movieId, showPrice = 200) => {
   return showsToCreate;
 };
 
-// Syncs "now playing" movies from TMDB to local database every 6 days.
+// Syncs "now playing" movies from TMDB to local database every 5 minutes.
 // This ensures the demo always has fresh, bookable movies available.
 const syncTMDBMovies = inngest.createFunction(
   { id: "sync-tmdb-movies", retries: 2 },
-  { cron: "0 4 */6 * *" }, // Runs every 6 days at 4 AM UTC
+  { cron: "*/5 * * * *" }, // Runs every 5 minutes
   async ({ step }) => {
     const result = await step.run("fetch-and-sync-movies", async () => {
       try {
         // Fetch now playing movies from TMDB
-        const { data } = await axios.get(
-          "https://api.themoviedb.org/3/movie/now_playing",
-          {
-            accept: "application/json",
-            headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
-          },
-        );
+        const { data } = await tmdbBreaker.fire(async () => {
+          return await axios.get(
+            "https://api.themoviedb.org/3/movie/now_playing",
+            {
+              accept: "application/json",
+              headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
+              timeout: 4500,
+            },
+          );
+        });
 
         const movies = data.results.slice(0, 8); // Sync top 8 movies
         let moviesCreated = 0;
@@ -699,6 +719,6 @@ export const functions = [
   preComputeAnalytics,
   // Recommendation cache pre-warming (after payment confirmed)
   refreshUserRecommendations,
-  // Automated TMDB movie sync (every 24 hours cron)
+  // Automated TMDB movie sync (every 5 minutes cron)
   syncTMDBMovies,
 ];

@@ -10,6 +10,7 @@ import Movie from "../models/movie.model.js";
 import Show from "../models/show.model.js";
 import stripe from "stripe";
 import { inngest } from "../inngest/index.js";
+import { groqBreaker, stripeBreaker } from "../config/circuitBreakers.js";
 
 // ─── Security: Pipeline Validation ──────────────────────────────────────────
 const ALLOWED_LOOKUP_COLLECTIONS = new Set([
@@ -381,27 +382,45 @@ const Agent = async (req, res) => {
           // Use origin from req headers or fallback
           const origin = req.headers.origin || "http://localhost:5173";
 
-          const session = await stripeInstance.checkout.sessions.create({
-            success_url: `${origin}/loading/mybookings`,
-            cancel_url: `${origin}/mybookings`,
-            line_items: [
-              {
-                price_data: {
-                  currency: "inr",
-                  product_data: {
-                    name: `${show.movie.title} - Seats: ${seats.join(", ")}`,
+          let session;
+          try {
+            session = await stripeBreaker.fire(async () => {
+              return await stripeInstance.checkout.sessions.create({
+                success_url: `${origin}/loading/mybookings`,
+                cancel_url: `${origin}/mybookings`,
+                line_items: [
+                  {
+                    price_data: {
+                      currency: "inr",
+                      product_data: {
+                        name: `${show.movie.title} - Seats: ${seats.join(", ")}`,
+                      },
+                      unit_amount: Math.floor(amount * 100), // paise (1 INR = 100 paise)
+                    },
+                    quantity: 1,
                   },
-                  unit_amount: Math.floor(amount * 100), // paise (1 INR = 100 paise)
+                ],
+                mode: "payment",
+                metadata: {
+                  bookingId: booking._id.toString(),
+                  userId,
                 },
-                quantity: 1,
-              },
-            ],
-            mode: "payment",
-            metadata: {
-              bookingId: booking._id.toString(),
-            },
-            expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 mins
-          });
+                expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 mins
+              });
+            });
+          } catch (stripeErr) {
+            logger.error(
+              { err: stripeErr?.message },
+              "Stripe circuit breaker tripped in bookTicketTool — rolling back seats",
+            );
+            const unsetSeats = {};
+            seats.forEach((seat) => {
+              unsetSeats[`occupiedSeats.${seat}`] = "";
+            });
+            await Show.updateOne({ _id: showId }, { $unset: unsetSeats });
+            await Booking.findByIdAndDelete(booking._id);
+            return "Payment gateway is temporarily unavailable. Your reserved seats were released. Please try again in a moment.";
+          }
 
           booking.paymentLink = session.url;
           await booking.save();
@@ -489,10 +508,25 @@ const Agent = async (req, res) => {
           : new AIMessage(safeContent);
       });
 
-    const result = await executor.invoke({
-      input: safeMessage,
-      chat_history: chat_history,
-    });
+        let result;
+    try {
+      result = await groqBreaker.fire(async () => {
+        return await executor.invoke({
+          input: safeMessage,
+          chat_history: chat_history,
+        });
+      });
+    } catch (llmErr) {
+      logger.warn(
+        { err: llmErr?.message },
+        "Groq circuit breaker tripped or call failed in Agent controller — returning fallback",
+      );
+      return res.json({
+        answer:
+          "I'm temporarily experiencing high demand or connectivity issues with our AI reasoning service. You can still browse all movies, check showtimes, and book tickets directly from the Movies tab!",
+        degraded: true,
+      });
+    }
     logger.info({ answer: result.output }, "Agent result");
 
     // Try to parse the output as JSON, else fallback to plain output
